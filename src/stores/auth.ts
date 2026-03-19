@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { AuthState, Employee } from '@/types/auth'
+import type { AuthState, Employee, PayrollInit } from '@/types/auth'
 import router from '@/router'
 import { startIdleLogout, stopIdleLogout } from '@/utils/idleLogOuts'
 
@@ -21,6 +21,7 @@ export const useAuthStore = defineStore('auth', {
     gender: null,
     firstLogin: true,
     lastActivity: null,
+    payrollInit: null,
   }),
   persist: true,
   getters: {
@@ -29,6 +30,7 @@ export const useAuthStore = defineStore('auth', {
     getRole: (state) => state.role,
     getGender: (state) => state.gender,
     getFirstLogin: (state) => state.firstLogin,
+    getPayrollInit: (state) => state.payrollInit,
   },
   actions: {
     login(payload: LoginPayLoad) {
@@ -62,6 +64,9 @@ export const useAuthStore = defineStore('auth', {
     setGender(gender: string) {
       this.gender = gender
     },
+    setPayrollInit(payrollInit: PayrollInit) {
+      this.payrollInit = payrollInit
+    },
     logout(reason: string = 'manual') {
       console.log('Logout:', reason)
       stopIdleLogout()
@@ -72,6 +77,7 @@ export const useAuthStore = defineStore('auth', {
       this.role = 'user'
       this.gender = null
       this.firstLogin = false
+      this.payrollInit = null
       localStorage.removeItem('accessToken')
       router.push('/login')
     },

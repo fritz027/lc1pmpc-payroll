@@ -6,6 +6,7 @@
 import { onMounted } from 'vue'
 import { useAuthStore } from './stores/auth'
 import { startIdleLogout } from './utils/idleLogOuts'
+import './assets/main.css'
 
 const authStore = useAuthStore()
 const AUTO_LOGOUT_TIME = 20 * 1000 //5 * 60 * 1000 // 5 minutes

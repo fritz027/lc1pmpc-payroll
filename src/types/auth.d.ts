@@ -19,6 +19,7 @@ export interface Employee {
   lastName: string
   firstName: string
   gender: string
+  dateHired?: string
 }
 
 export interface AuthState {
@@ -28,4 +29,19 @@ export interface AuthState {
   role: string
   firstLogin: boolean
   lastActivity: Date | string | null
+  payrollInit?: PayrollInit | null
+}
+
+export interface PayrollInit {
+  init_cd_full: string
+  init_cd: string
+  phalf: string
+  pay_fr: string
+  pay_to: string
+  posted: '0' | '1'
+  history: '0' | '1'
+  pay_proc: string
+  pay_emps: number
+  att_fr: string
+  att_to: string
 }

@@ -5,6 +5,7 @@ import { vuetify } from './plugins/vuetify'
 import App from './App.vue'
 import router from './router'
 import '@mdi/font/css/materialdesignicons.css'
+import './assets/main.css'
 
 const pinia = createPinia()
 pinia.use(piniaPluginPersistedstate)

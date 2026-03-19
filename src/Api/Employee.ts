@@ -1,7 +1,7 @@
 import Api from '@/services/Api'
 import type { GetPaySlip, Suggestions, ChangePassword } from '@/types/general'
 
-const endPoint = '/pmdeux'
+const endPoint = '/pmdeux/employee'
 export default {
   GetPaySlip(accessToken: string, PayslipArgs: GetPaySlip) {
     return Api.get(
@@ -43,7 +43,7 @@ export default {
     })
   },
   UpdateEmplyoeePassword(accessToken: string, param: ChangePassword) {
-    return Api.put(
+    return Api.patch(
       `${endPoint}/change-password/${param.employeeNo}`,
       {
         oldPassword: param.oldPassword,
@@ -58,6 +58,41 @@ export default {
   },
   FetchPayslipSetting(accessToken: string) {
     return Api.get(`${endPoint}/payslip-setting`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+  },
+  PayrollInitials(accessToken: string) {
+    return Api.get(`${endPoint}/payroll-init`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+  },
+  EmployeeTravelOrders(accessToken: string, from: string, to: string) {
+    return Api.get(`${endPoint}/travel-order/list?from=${from}&to=${to}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+  },
+  NewEmployeeTravelOrder(accessToken: string, payload: any) {
+    return Api.post(`${endPoint}/travel-order/new`, payload, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+  },
+  UpdateEmployeeTravelOrder(accessToken: string, payload: any) {
+    return Api.patch(`${endPoint}/travel-order/update`, payload, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+  },
+  DeleteEmployeeTravelOrder(accessToken: string, id: string) {
+    return Api.delete(`${endPoint}/travel-order/remove/${id}`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },

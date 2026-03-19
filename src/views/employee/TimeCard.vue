@@ -6,18 +6,24 @@
         <v-row align="center" justify="space-between" class="mb-6">
           <v-col cols="12" md="6">
             <h2 class="text-h5 font-weight-bold">Timecard</h2>
+            <v-chip color="info" size="small" variant="tonal">
+              <v-icon start icon="mdi-information-outline"></v-icon>
+              Click the payroll period to change
+            </v-chip>
           </v-col>
           <v-col cols="12" md="6" class="d-flex justify-end">
-            <v-select
+            <!-- <v-select
               v-model="cutOff"
-              :items="cutOffs"
+              :items="fillteredcutOffs"
               item-title="cutoff"
               item-value="init_cd"
               label="Select Cutoff"
               outlined
               dense
               @update:model-value="getTimeCard"
-            ></v-select>
+            >
+              <template #item="{ props, item }"> </template>
+            </v-select> -->
           </v-col>
         </v-row>
         <v-row justify="end">
@@ -44,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import timeCardApi from '@/Api/TimeCard'
 import { useAuthStore } from '@/stores/auth'
 import * as pdfjsLib from 'pdfjs-dist'
@@ -53,8 +59,16 @@ import Pdf from 'vue3-pdfjs'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker
 
+interface Cutoffs {
+  init_cd: string
+  cutoff: string
+  dateFrom: string
+  dateTo: string
+}
+
+const currentYear = new Date().getFullYear()
 const cutOff = ref('')
-const cutOffs = ref([])
+const cutOffs = ref<Cutoffs[]>([])
 const authStore = useAuthStore()
 const pdfBlob = ref<Blob | null>(null)
 const canvas = ref<HTMLCanvasElement | null>(null)
@@ -62,7 +76,9 @@ const loading = ref<Boolean>(false)
 const pdfUrl = ref('')
 
 onMounted(async () => {
-  await fetchCutOffs()
+  // await fetchCutOffs()
+  const code = `${authStore.payrollInit?.init_cd}-${authStore.payrollInit?.phalf}`
+  await getTimeCard(code)
 })
 
 const fetchCutOffs = async () => {
@@ -72,11 +88,36 @@ const fetchCutOffs = async () => {
       console.log('Error: no cutoffs found')
       return
     }
+    console.log(result.data.result)
     cutOffs.value = result.data.result
   } catch (error) {
     console.log(error)
   }
 }
+
+watch(
+  () => authStore.payrollInit,
+  async (newInit) => {
+    if (!authStore.payrollInit) return
+    if (newInit && newInit.init_cd && newInit.phalf) {
+      const code = `${newInit.init_cd}-${newInit.phalf}`
+      await getTimeCard(code)
+    }
+  },
+  { immediate: true },
+)
+
+const fillteredcutOffs = computed(() => {
+  return cutOffs.value.filter((period) => {
+    if (!period.dateTo) return false
+
+    // Extract the year from the pay_to date
+    const payToYear = new Date(period.dateTo).getFullYear()
+
+    // Keep it if the year matches the current year
+    return payToYear === currentYear
+  })
+})
 
 const getTimeCard = async (code: string) => {
   try {

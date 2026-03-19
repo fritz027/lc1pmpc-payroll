@@ -1,10 +1,10 @@
 import Api from '@/services/Api'
 import type { Attendance } from '@/types/timeCard'
 
-const endPoint = '/pmdeux'
+const endPoint = '/pmdeux/employee'
 export default {
   GetCutoffs(accessToken: string) {
-    return Api.get(`${endPoint}/cutoffs`, {
+    return Api.get(`${endPoint}/cutoff/attendance`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },

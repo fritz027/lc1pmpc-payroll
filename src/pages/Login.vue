@@ -90,7 +90,7 @@ import logo from '@/assets/logo.png'
 const authStore = useAuthStore()
 
 const employeeNo = ref('')
-const password = ref('')
+const password = ref('SEPTEMBER19')
 const router = useRouter()
 const showPassword = ref<boolean>(false)
 const errorMessage = ref('')

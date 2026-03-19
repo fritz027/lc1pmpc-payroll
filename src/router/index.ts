@@ -11,6 +11,20 @@ import NewEmployeeSuggestion from '@/views/employee/suggestion/create.vue'
 import EmployeeAnnouncements from '@/views/employee/Announcements.vue'
 import Suggestions from '@/views/admin/suggestions/suggestions.vue'
 import Settings from '@/views/admin/settings/settings.vue'
+import UserRoles from '@/views/admin/superAdmin/userRoles.vue'
+import userApprover from '@/views/admin/superAdmin/userApprover.vue'
+import leavePage from '@/views/employee/leave/leavePage.vue'
+import Overtime from '@/views/employee/overtime/Overtime.vue'
+import Attendance from '@/views/employee/attendance/attendance.vue'
+import LeaveAprrove from '@/views/admin/approvers/leave.vue'
+import OvertimeApprove from '@/views/admin/approvers/overtime.vue'
+import AttendanceApprove from '@/views/admin/approvers/attendance.vue'
+import TravelOrderList from '@/views/employee/travelOrder/TravelOrderList.vue'
+import TravelOderApprove from '@/views/admin/approvers/travelorder.vue'
+import ShiftPage from '@/views/employee/shift/shiftPage.vue'
+import ChangeOff from '@/views/admin/approvers/changeoff.vue'
+import CodeOfConduct from '@/views/employee/CondeOfConduct.vue'
+import ManPowerRequest from '@/views/admin/manpower/manpowerRequest.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -53,6 +67,11 @@ const router = createRouter({
           component: EmployeeSuggestions,
         },
         {
+          path: '/leave',
+          name: 'leavePage',
+          component: leavePage,
+        },
+        {
           path: '/suggestion/new',
           name: 'suggestion',
           component: NewEmployeeSuggestion,
@@ -81,6 +100,71 @@ const router = createRouter({
           path: '/admin/settings',
           name: 'settings',
           component: Settings,
+        },
+        {
+          path: '/admin/user-roles',
+          name: 'UserRoles',
+          component: UserRoles,
+        },
+        {
+          path: '/admin/user-approver',
+          name: 'userApprover',
+          component: userApprover,
+        },
+        {
+          path: '/over-time',
+          name: 'Overtime',
+          component: Overtime,
+        },
+        {
+          path: '/attendance',
+          name: 'Attendance',
+          component: Attendance,
+        },
+        {
+          path: '/admin/leave-approve',
+          name: 'LeaveAprrove',
+          component: LeaveAprrove,
+        },
+        {
+          path: '/admin/overtime-approve',
+          name: 'OvertimeApprove',
+          component: OvertimeApprove,
+        },
+        {
+          path: '/admin/attendance-approve',
+          name: 'AttendanceApprove',
+          component: AttendanceApprove,
+        },
+        {
+          path: '/travel-order',
+          name: 'TravelOrderList',
+          component: TravelOrderList,
+        },
+        {
+          path: '/admin/travel-order-approve',
+          name: 'TravelOderApprove',
+          component: TravelOderApprove,
+        },
+        {
+          path: '/schedule',
+          name: 'ShiftPage',
+          component: ShiftPage,
+        },
+        {
+          path: '/admin/change-day-off-approve',
+          name: 'ChangeDayOffApprove',
+          component: ChangeOff,
+        },
+        {
+          path: '/code-of-conduct',
+          name: 'CodeOfConduct',
+          component: CodeOfConduct,
+        },
+        {
+          path: '/admin/manpower-request',
+          name: 'ManPowerRequests',
+          component: ManPowerRequest,
         },
       ],
     },

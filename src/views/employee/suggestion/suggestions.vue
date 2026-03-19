@@ -16,7 +16,11 @@
       <v-card-text>
         <v-row align="center" justify="space-between" class="mb-4">
           <v-col cols="12">
-            <v-data-table :headers="headers" :items="suggestions" class="elevation-0 rounded-2xl">
+            <v-data-table
+              :headers="headers"
+              :items="suggestions"
+              class="elevation-0 rounded-2xl striped-table"
+            >
               <template #item.status="{ item }">
                 <v-chip
                   :color="ItemStatus(item.status).color"

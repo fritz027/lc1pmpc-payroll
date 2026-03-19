@@ -1,0 +1,24 @@
+/* src/assets/main.css */
+
+/* The Border around the card/table */
+.custom-table-border {
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+}
+
+/* Zebra Striping - target the table cells (td) or rows (tr) */
+.striped-table tbody tr:nth-child(even) {
+  background-color: #e3f2fd !important;
+}
+
+/* Hover effect */
+.striped-table tbody tr:hover {
+  background-color: #bbdefb !important;
+  cursor: pointer;
+}
+
+/* Vertical lines between columns */
+.striped-table .v-data-table__td {
+  border-inline-end: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
