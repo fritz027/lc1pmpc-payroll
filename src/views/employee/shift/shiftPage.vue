@@ -5,64 +5,48 @@
         <v-icon icon="mdi-calendar-sync" class="mr-2" />
         Change Day-Off Request
         <v-spacer />
-        <v-btn
-          v-if="selection.from || selection.to"
-          color="error"
-          variant="tonal"
-          prepend-icon="mdi-refresh"
-          @click="resetSelection"
-        >
-          Reset Selection
+        <v-btn color="info" variant="tonal" prepend-icon="mdi-plus" @click="openNewDialog">
+          New Request
         </v-btn>
       </v-card-title>
 
       <v-divider />
 
-      <v-alert type="info" variant="tonal" class="ma-4" border="start">
-        <div class="text-subtitle-1 font-weight-bold">Instructions:</div>
-        1. Select your current <strong>Day-Off (Special or Regular)</strong>. 2. Select the
-        <strong>Work Day (Normal)</strong> you want to swap it with.
-      </v-alert>
-      <v-card elevation="2" class="rounded-lg border">
+      <v-card elevation="2" class="rounded-lg border ma-4">
         <v-data-table
-          :items="schedule"
+          :items="dayOffs"
           :headers="headers"
           :items-per-page="-1"
           hide-default-footer
           class="striped-table"
           hover
-          @click:row="handleRowClick"
         >
-          <template v-slot:item.shift_date="{ value }">
+          <template v-slot:item.ot_date="{ value }">
+            <span class="font-weight-medium">{{ formatDateOnly(value) }}</span>
+          </template>
+          <template v-slot:item.time_from="{ value }">
+            <span class="font-weight-medium">{{ formatTimeDisplay(value) }}</span>
+          </template>
+          <template v-slot:item.time_to="{ value }">
+            <span class="font-weight-medium">{{ formatTimeDisplay(value) }}</span>
+          </template>
+          <template v-slot:item.hours="{ value }">
+            <span class="font-weight-medium">{{ value ? Number(value).toFixed(2) : '0.00' }}</span>
+          </template>
+          <template v-slot:item.charge_to_date="{ value }">
             <span class="font-weight-medium">{{ formatDateOnly(value) }}</span>
           </template>
 
-          <template v-slot:item.shift_type="{ value }">
-            <v-chip :color="getStatusColor(value)" size="small" label class="font-weight-bold">
-              {{ value === 'N' ? 'NORMAL' : value === 'P' ? 'SPECIAL OFF' : 'REG OFF' }}
-            </v-chip>
-          </template>
           <template v-slot:item.status="{ item }">
-            <v-chip
-              v-if="item.request_status === 'P'"
-              color="warning"
-              size="x-small"
-              variant="flat"
-            >
+            <v-chip v-if="item.status === 'P'" color="warning" size="x-small" variant="flat">
               PENDING
             </v-chip>
-
-            <v-chip
-              v-else-if="item.request_status === 'A'"
-              color="info"
-              size="x-small"
-              variant="flat"
-            >
-              SWAPPED
+            <v-chip v-else-if="item.status === 'A'" color="info" size="x-small" variant="flat">
+              APPROVED
             </v-chip>
-
             <span v-else class="text-caption text-grey">-</span>
           </template>
+
           <template v-slot:item.actions="{ item }">
             <div
               v-if="isPosted"
@@ -72,98 +56,166 @@
               Payroll Posted
             </div>
 
-            <template v-else>
-              <v-btn
-                v-if="item.request_status === 'P'"
-                size="small"
-                color="error"
-                variant="tonal"
-                prepend-icon="mdi-close-circle"
-                @click="cancelRequest(item)"
-              >
-                Cancel Request
-              </v-btn>
+            <div v-else-if="item.status === 'P'" class="d-flex justify-end" style="gap: 8px">
+              <v-tooltip text="Edit Request" location="top">
+                <template v-slot:activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    icon="mdi-pencil"
+                    variant="text"
+                    color="teal-darken-1"
+                    size="small"
+                    @click="openEditDialog(item)"
+                  ></v-btn>
+                </template>
+              </v-tooltip>
 
-              <v-btn
-                v-else
-                :variant="isItemSelected(item) ? 'elevated' : 'outlined'"
-                size="small"
-                :color="getButtonColor(item)"
-                :disabled="isButtonDisabled(item) || item.request_status === 'A'"
-                :prepend-icon="isItemSelected(item) ? 'mdi-check-circle' : 'mdi-plus'"
-                @click="handleSelection(item)"
-              >
-                {{ item.request_status === 'A' ? 'Swapped' : getButtonText(item) }}
-              </v-btn>
-            </template>
+              <v-tooltip text="Cancel Request" location="top">
+                <template v-slot:activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    icon="mdi-close-circle-outline"
+                    variant="text"
+                    color="error"
+                    size="small"
+                    @click="promptCancel(item)"
+                  ></v-btn>
+                </template>
+              </v-tooltip>
+            </div>
           </template>
         </v-data-table>
       </v-card>
-      <v-dialog v-model="confirmDialog" max-width="500" @click:outside="resetSelection">
-        <v-card
-          :prepend-icon="isViewMode ? 'mdi-eye' : 'mdi-swap-horizontal'"
-          :title="isViewMode ? 'View Pending Request' : 'Confirm Day-Off Swap'"
-        >
-          <v-divider />
 
-          <v-card-text class="pa-6">
-            <div class="text-body-1 mb-4">
-              {{
-                isViewMode
-                  ? 'Details of your pending request:'
-                  : 'You are requesting to swap these days:'
-              }}
-            </div>
-
-            <v-sheet border rounded class="pa-3 mb-3 bg-grey-lighten-4">
-              <div class="text-caption text-uppercase">Current Day-Off</div>
-              <div class="text-h6 text-blue-darken-2">
-                {{ formatDateOnly(selection.from?.shift_date || '') }}
-              </div>
-            </v-sheet>
-
-            <v-sheet v-if="selection.to" border rounded class="pa-3 bg-grey-lighten-4">
-              <div class="text-caption text-uppercase">Target Work Day</div>
-              <div class="text-h6 text-green-darken-2">
-                {{ formatDateOnly(selection.to?.shift_date || '') }}
-              </div>
-            </v-sheet>
-
-            <v-textarea
-              v-model="reason"
-              label="Reason for Swap"
-              variant="outlined"
-              class="mt-4"
-              :readonly="isViewMode"
-              hide-details
-            />
-          </v-card-text>
-
-          <v-divider />
-
-          <v-card-actions class="pa-4">
+      <v-dialog v-model="requestDialog" max-width="600" persistent>
+        <v-card class="pa-2">
+          <v-card-title class="text-h6 font-weight-bold d-flex justify-space-between align-center">
+            {{ isEditing ? 'Edit Change Day-Off Request' : 'New Change Day-Off Request' }}
             <v-btn
-              v-if="isViewMode"
-              color="error"
+              icon="mdi-close"
+              variant="text"
+              density="comfortable"
+              @click="closeRequestDialog"
+            ></v-btn>
+          </v-card-title>
+          <v-divider class="mb-4"></v-divider>
+
+          <v-card-text>
+            <v-alert
+              v-if="errorMessage"
+              type="error"
               variant="tonal"
-              @click="cancelRequest(selection)"
+              class="mb-4"
+              closable
+              @click:close="errorMessage = ''"
             >
-              Cancel Request
-            </v-btn>
+              {{ errorMessage }}
+            </v-alert>
+            <v-form @submit.prevent="submitRequest" v-model="isFormValid" ref="formRef">
+              <v-row>
+                <v-col cols="12" sm="6" class="py-1">
+                  <v-text-field
+                    v-model="formData.ot_date"
+                    label="Date (OT Date)"
+                    type="date"
+                    variant="outlined"
+                    density="comfortable"
+                    :rules="[(v: any) => !!v || 'Date is required']"
+                    :disabled="isEditing"
+                  ></v-text-field>
+                </v-col>
+                <!-- <v-col cols="12" sm="6" class="py-1">
+                  <v-text-field
+                    v-model="formData.charge_to_date"
+                    label="Charge To Date (Optional)"
+                    type="date"
+                    variant="outlined"
+                    density="comfortable"
+                    clearable
+                  ></v-text-field>
+                </v-col> -->
+              </v-row>
 
-            <v-spacer />
+              <v-row>
+                <v-col cols="12" sm="4" class="py-1">
+                  <v-text-field
+                    v-model="formData.time_from"
+                    label="Time From"
+                    type="time"
+                    variant="outlined"
+                    density="comfortable"
+                    :rules="[(v: any) => !!v || 'Time From is required']"
+                  ></v-text-field>
+                </v-col>
+                <v-col cols="12" sm="4" class="py-1">
+                  <v-text-field
+                    v-model="formData.time_to"
+                    label="Time To"
+                    type="time"
+                    variant="outlined"
+                    density="comfortable"
+                    :rules="[(v: any) => !!v || 'Time To is required']"
+                  ></v-text-field>
+                </v-col>
+                <v-col cols="12" sm="4" class="py-1">
+                  <v-text-field
+                    v-model="formData.hours"
+                    label="Hours"
+                    type="text"
+                    variant="outlined"
+                    density="comfortable"
+                    :rules="[
+                      (v: any) => !!v || 'Hours required',
+                      (v: any) => v > 0 || 'Must be > 0',
+                    ]"
+                  ></v-text-field>
+                </v-col>
+              </v-row>
 
-            <v-btn variant="text" @click="confirmDialog = false">Close</v-btn>
+              <v-row class="mt-2">
+                <v-col cols="12" class="d-flex justify-end" style="gap: 8px">
+                  <v-btn
+                    color="grey-darken-1"
+                    variant="text"
+                    @click="closeRequestDialog"
+                    :disabled="submitting"
+                  >
+                    Cancel
+                  </v-btn>
+                  <v-btn
+                    color="info"
+                    type="submit"
+                    prepend-icon="mdi-content-save"
+                    :loading="submitting"
+                  >
+                    {{ isEditing ? 'Update Request' : 'Submit Request' }}
+                  </v-btn>
+                </v-col>
+              </v-row>
+            </v-form>
+          </v-card-text>
+        </v-card>
+      </v-dialog>
 
-            <v-btn
-              v-if="!isViewMode"
-              color="primary"
-              variant="elevated"
-              :loading="submitting"
-              @click="submitRequest"
+      <v-dialog v-model="cancelDialog" max-width="400">
+        <v-card>
+          <v-card-title class="text-error font-weight-bold d-flex align-center">
+            <v-icon icon="mdi-alert-circle" color="error" class="mr-2"></v-icon>
+            Confirm Cancellation
+          </v-card-title>
+          <v-card-text class="pt-2">
+            Are you sure you want to cancel this pending day-off request for
+            <strong>{{ formatDateOnly(itemToCancel?.ot_date) }}</strong
+            >?
+          </v-card-text>
+          <v-card-actions class="px-4 pb-4">
+            <v-spacer></v-spacer>
+            <v-btn color="grey-darken-1" variant="text" @click="cancelDialog = false"
+              >No, Keep It</v-btn
             >
-              Submit for Approval
-            </v-btn>
+            <v-btn color="error" variant="flat" @click="confirmCancel" :loading="canceling"
+              >Yes, Cancel It</v-btn
+            >
           </v-card-actions>
         </v-card>
       </v-dialog>
@@ -175,156 +227,147 @@
 import { ref, onMounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import Api from '@/Api/Shift'
+import { fa } from 'vuetify/locale'
 
-// Types (Keep these for TS safety)
-export type ShiftType = 'N' | 'P' | 'G'
-export interface EmpShift {
+export interface DayOffRequest {
   emp_no: string
-  shift_date: string
-  shift_code: string
-  shift_type: ShiftType
-  ot_spcl: number | null
-  request_id?: number // For pending/approved requests
-  request_status?: 'P' | 'A' | null // P = Pending, A = Approved/Swapped
+  ot_date: string
+  time_from: string
+  time_to: string
+  hours: number
+  charge_to_date: string | null
+  status?: 'P' | 'A' | 'C' | 'R'
+  request_id?: number // Assuming you have an ID to cancel by
 }
 
 const authStore = useAuthStore()
-const schedule = ref<EmpShift[]>([])
-const selection = ref<{ from: EmpShift | null; to: EmpShift | null; request_id: number | null }>({
-  from: null,
-  to: null,
-  request_id: null,
-})
-const confirmDialog = ref(false)
-const submitting = ref(false)
-const reason = ref('')
-const isViewMode = ref(false)
+const dayOffs = ref<DayOffRequest[]>([])
 const isPosted = ref(false)
 
+// Dialog States
+const requestDialog = ref(false)
+const cancelDialog = ref(false)
+const isEditing = ref(false)
+const submitting = ref(false)
+const canceling = ref(false)
+const isFormValid = ref(false)
+const formRef = ref<any>(null)
+const errorMessage = ref('')
+
+const itemToCancel = ref<DayOffRequest | null>(null)
+
+// Form State
+const defaultForm = {
+  ot_date: '',
+  time_from: '',
+  time_to: '',
+  hours: '',
+  charge_to_date: '',
+}
+const formData = ref({ ...defaultForm })
+
+// Table Headers
 const headers = [
-  { title: 'Date', key: 'shift_date', align: 'start' as const },
-  { title: 'Shift Code', key: 'shift_code' },
-  { title: 'Type', key: 'shift_type' },
+  { title: 'OT Date', key: 'ot_date', align: 'start' as const },
+  { title: 'Time From', key: 'time_from' },
+  { title: 'Time To', key: 'time_to' },
+  { title: 'Hours', key: 'hours', align: 'center' as const },
+  { title: 'Charge To Date', key: 'charge_to_date' },
   { title: 'Status', key: 'status', align: 'center' as const },
-  { title: 'Action', key: 'actions', sortable: false, align: 'end' as const },
+  { title: 'Actions', key: 'actions', sortable: false, align: 'end' as const },
 ]
 
-const resetSelection = () => {
-  selection.value = { from: null, to: null, request_id: null }
-  loadSchedule()
-  reason.value = ''
-  isViewMode.value = false
-}
-
-const isItemSelected = (item: EmpShift) => {
-  return (
-    selection.value.from?.shift_date === item.shift_date ||
-    selection.value.to?.shift_date === item.shift_date
-  )
-}
-
-const isButtonDisabled = (item: any) => {
-  // Disable if it's already pending or approved
-  if (item.request_status === 'P' || item.request_status === 'A') return true
-
-  if (!selection.value.from) return item.shift_type === 'N'
-  if (selection.value.from && !selection.value.to) {
-    if (selection.value.from.shift_date === item.shift_date) return false
-    return item.shift_type !== 'N'
-  }
-  return false
-}
-
-const handleSelection = (item: any) => {
-  // 1. VIEW PENDING MODE
-  if (item.request_status === 'P') {
-    isViewMode.value = true
-
-    // Map the new SQL columns directly to the UI
-    selection.value.from = { shift_date: item.original_off_date } as any
-    selection.value.to = { shift_date: item.requested_off_date } as any
-    selection.value.request_id = item.request_id
-    reason.value = item.reason || 'No reason provided.'
-    confirmDialog.value = true
-    return
-  }
-
-  // 2. NORMAL SWAP MODE
-  isViewMode.value = false
-  if (item.shift_type === 'P' || item.shift_type === 'G') {
-    selection.value.from = item
-  } else if (selection.value.from && item.shift_type === 'N') {
-    selection.value.to = item
-    confirmDialog.value = true
-  }
-}
-
-const getButtonText = (item: EmpShift) => {
-  if (selection.value.from?.shift_date === item.shift_date) return 'Selected (Off)'
-  if (selection.value.to?.shift_date === item.shift_date) return 'Selected (Work)'
-
-  if (!selection.value.from) {
-    return item.shift_type === 'P' || item.shift_type === 'G' ? 'Pick Off Day' : 'Work Day'
-  }
-  return item.shift_type === 'N' ? 'Pick to Swap' : 'Off Day'
-}
-
-const getButtonColor = (item: EmpShift) => {
-  if (isItemSelected(item)) return 'success'
-  return 'primary'
-}
-
-const getStatusColor = (type: ShiftType) => {
-  const colors = { N: 'green', P: 'blue', G: 'orange' }
-  return colors[type] || 'grey'
-}
-
-const formatDateOnly = (dateString: string) => {
+// --- Formatters ---
+const formatDateOnly = (dateString: string | null | undefined) => {
   if (!dateString) return '-'
+  const date = new Date(dateString)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+const formatTimeDisplay = (timeString: string | null) => {
+  if (!timeString) return '-'
+  const timeToParse = timeString.length <= 5 ? `1970-01-01T${timeString}:00` : timeString
+  return new Date(timeToParse).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+}
+
+const formatDate = (dateString: string) => {
+  if (!dateString) return ''
 
   const date = new Date(dateString)
-  const year = date.getFullYear()
-  // getMonth() is 0-indexed, so we add 1. padStart ensures it's always 2 digits.
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
 
-  return `${year}-${month}-${day}`
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long', // "Monday"
+    year: 'numeric', // "2026"
+    month: 'short', // "Mar"
+    day: 'numeric', // "11"
+  })
 }
 
+const formatForTimeInput = (rawTime: string | null) => {
+  if (!rawTime) return ''
+  const timePart = rawTime.includes('T') ? rawTime.split('T')[1] : rawTime.split(' ')[1]
+  return timePart ? timePart.substring(0, 5) : ''
+}
+
+// --- Data Fetching ---
 const loadSchedule = async () => {
-  const from = authStore.payrollInit?.pay_fr ? formatDateOnly(authStore.payrollInit.pay_fr) : null
-  const to = authStore.payrollInit?.pay_to ? formatDateOnly(authStore.payrollInit.pay_to) : null
-  isPosted.value = authStore.payrollInit?.posted === '1'
-  if (!from || !to) return
-
-  const response = await Api.GetShiftSchedule(from, to, authStore.accessToken)
-  schedule.value = response.data.schedule
+  try {
+    const response = await Api.EmployeeChangeDayOffRequests(authStore.accessToken)
+    dayOffs.value = response.data.dayOffRequests
+  } catch (error) {
+    console.error('Failed to load schedule', error)
+  }
 }
 
+// --- Dialog Controls ---
+const openNewDialog = () => {
+  isEditing.value = false
+  formData.value = { ...defaultForm }
+  requestDialog.value = true
+}
+
+const openEditDialog = (item: DayOffRequest) => {
+  isEditing.value = true
+  formData.value = {
+    ot_date: formatDateOnly(item.ot_date),
+    time_from: formatForTimeInput(item.time_from),
+    time_to: formatForTimeInput(item.time_to),
+    hours: item.hours.toString(),
+    charge_to_date:
+      formatDateOnly(item.charge_to_date) === '-' ? '' : formatDateOnly(item.charge_to_date),
+  }
+  requestDialog.value = true
+}
+
+const closeRequestDialog = () => {
+  requestDialog.value = false
+  setTimeout(() => formRef.value?.resetValidation(), 200)
+}
+
+// --- Actions ---
 const submitRequest = async () => {
-  if (!selection.value.from || !selection.value.to) return
-  if (!reason.value.trim()) {
-    alert('Please provide a reason for the swap.')
+  if (!isFormValid.value) return
+  submitting.value = true
+
+  const dateFrom = authStore.payrollInit?.pay_fr ?? ''
+  const dateTo = authStore.payrollInit?.pay_to ?? ''
+  if (formData.value.ot_date < dateFrom || formData.value.ot_date > dateTo) {
+    errorMessage.value = `Validation Failed: Overtime date must be between ${formatDate(dateFrom)} and ${formatDate(dateTo)}}.`
+    submitting.value = false
     return
   }
-  submitting.value = true
+
   try {
     const payload = {
-      emp_no: authStore.employee?.employeeNo || '',
-      original_off_date: selection.value.from.shift_date,
-      requested_off_date: selection.value.to.shift_date,
-      reason: reason.value,
+      ...formData.value,
+      hours: Number(formData.value.hours), // Ensure it sends as a number
     }
 
-    await Api.SubmitChangeDayRequest(
-      {
-        ...payload,
-      },
-      authStore.accessToken,
-    )
-    confirmDialog.value = false
-    resetSelection()
-    // Optional: show a success snackbar here
+    // Since your backend uses `ON EXISTING UPDATE`, the same API call works for New and Edit!
+    await Api.NewChangeDayOffRequest(payload, authStore.accessToken)
+
+    closeRequestDialog()
+    await loadSchedule()
   } catch (error) {
     console.error('Submission failed', error)
   } finally {
@@ -332,43 +375,72 @@ const submitRequest = async () => {
   }
 }
 
-const cancelRequest = async (item: any) => {
-  if (!confirm('Are you sure you want to cancel this pending request?')) return
-  try {
-    const res = await Api.CancelChangeDayRequest(item.request_id, authStore.accessToken)
+const promptCancel = (item: DayOffRequest) => {
+  itemToCancel.value = item
+  cancelDialog.value = true
+}
 
-    // Close the dialog and refresh the table
-    confirmDialog.value = false
+const confirmCancel = async () => {
+  if (!itemToCancel.value) return
+  canceling.value = true
+
+  try {
+    // Assuming you have an ID to pass, or pass the date/emp_no combo
+    await Api.CancelDayOffRequest(itemToCancel.value.ot_date, authStore.accessToken)
+
+    cancelDialog.value = false
     await loadSchedule()
-    resetSelection()
   } catch (error) {
     console.error('Failed to cancel request', error)
+  } finally {
+    canceling.value = false
   }
 }
 
-const handleRowClick = (event: Event, row: { item: EmpShift }) => {
-  handleSelection(row.item)
+const calculateHours = (start: string, end: string) => {
+  if (!start || !end) return ''
+
+  const [startHour, startMin] = start.split(':').map(Number)
+  const [endHour, endMin] = end.split(':').map(Number)
+
+  let startTotalMins = startHour * 60 + startMin
+  let endTotalMins = endHour * 60 + endMin
+
+  // Handle shifts that cross midnight
+  if (endTotalMins <= startTotalMins) {
+    endTotalMins += 24 * 60
+  }
+
+  const diffMins = endTotalMins - startTotalMins
+  const totalHours = diffMins / 60
+
+  if (totalHours >= 5) {
+    // Subtract 1 hour for break if shift is 5 hours or more
+    return (totalHours - 1).toFixed(2)
+  }
+  return totalHours.toFixed(2)
 }
 
 watch(
-  () => [authStore.payrollInit?.pay_fr, authStore.payrollInit?.pay_to],
+  () => [formData.value.time_from, formData.value.time_to],
   ([newFrom, newTo]) => {
     if (newFrom && newTo) {
-      loadSchedule()
+      formData.value.hours = calculateHours(newFrom, newTo)
+    } else {
+      // Clear the hours field if either time is cleared
+      formData.value.hours = ''
     }
+  },
+)
+
+// --- Watchers & Lifecycle ---
+watch(
+  () => [authStore.payrollInit?.pay_fr, authStore.payrollInit?.pay_to],
+  ([newFrom, newTo]) => {
+    if (newFrom && newTo) loadSchedule()
   },
   { immediate: true },
 )
 
 onMounted(loadSchedule)
 </script>
-
-<style scoped>
-.min-vh-100 {
-  min-height: 100vh;
-}
-
-.striped-table :deep(tr.v-data-table__tr) {
-  cursor: pointer;
-}
-</style>

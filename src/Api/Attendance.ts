@@ -38,4 +38,11 @@ export default {
       },
     })
   },
+  AttendaceRecordsByEmployee(dateFrom: string, dateTo: string, token: string) {
+    return Api.get(`${endPoint}/cutoff?dateFrom=${dateFrom}&dateTo=${dateTo}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+  },
 }

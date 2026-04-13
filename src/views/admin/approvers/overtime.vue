@@ -285,12 +285,12 @@ const isApproved = (datePosted: string | null) => {
   return datePosted !== null && datePosted !== '00/00/0000'
 }
 
-const getStatusColor = (datePosted: string | null) => {
-  return isApproved(datePosted) ? 'success' : 'warning'
+const getStatusColor = (apprvd: string | null | number) => {
+  return apprvd === '1' || apprvd === 'Y' || apprvd === 1 ? 'success' : 'warning'
 }
 
-const doneApproved = (approve: string) => {
-  if (approve === '1' || approve === 'Y') return 'success'
+const doneApproved = (approve: string | null | number) => {
+  if (approve === '1' || approve === 'Y' || approve === 1) return 'success'
   return 'warning'
 }
 

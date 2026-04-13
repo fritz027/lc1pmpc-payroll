@@ -36,4 +36,25 @@ export default {
       },
     )
   },
+  EmployeeChangeDayOffRequests(accessToken: string) {
+    return Api.get(`${endPoint}/day-offs`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+  },
+  NewChangeDayOffRequest(payload: any, accessToken: string) {
+    return Api.post(`${endPoint}/day-offs`, payload, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+  },
+  CancelDayOffRequest(otDate: string, accessToken: string) {
+    return Api.delete(`${endPoint}/day-offs?date=${otDate}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+  },
 }

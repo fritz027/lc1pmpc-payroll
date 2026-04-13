@@ -29,9 +29,9 @@
             {{ formatDate(item.ot_date) }}
           </template>
 
-          <template v-slot:item.adv_time_in="{ item }">
+          <!-- <template v-slot:item.adv_time_in="{ item }">
             {{ formatTime(item.adv_time_in) }}
-          </template>
+          </template> -->
 
           <template v-slot:item.ot_time_in="{ item }">
             {{ formatTime(item.ot_time_in) }}
@@ -49,9 +49,9 @@
             {{ formatTime(item.ot_time_out) }}
           </template>
 
-          <template v-slot:item.adv_time_out="{ item }">
+          <!-- <template v-slot:item.adv_time_out="{ item }">
             {{ formatTime(item.adv_time_out) }}
-          </template>
+          </template> -->
 
           <template v-slot:item.apprvd="{ item }">
             <v-chip :color="item.apprvd === 1 ? 'success' : 'warning'" size="small" variant="flat">
@@ -204,8 +204,8 @@ const editOvertime = (item: OvertimeRecord) => {
 // Updated Vuetify Data Table Headers
 const headers = [
   { title: 'Date', key: 'ot_date', align: 'start' },
-  { title: 'Adv In', key: 'adv_time_in' },
-  { title: 'Adv Out', key: 'adv_time_out' },
+  // { title: 'Adv In', key: 'adv_time_in' },
+  // { title: 'Adv Out', key: 'adv_time_out' },
   { title: 'Time In', key: 'ot_time_in' },
   { title: 'Time Out', key: 'ot_time_out' },
   { title: 'Break In', key: 'ot_brktime_in' },

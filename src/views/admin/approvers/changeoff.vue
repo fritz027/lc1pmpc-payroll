@@ -101,25 +101,20 @@
                 </div>
               </template>
 
-              <template v-slot:item.from_off_date="{ item }">
-                <span class="font-weight-medium">{{ formatDate(item.from_off_date) }}</span>
+              <template v-slot:item.ot_date="{ item }">
+                <span class="font-weight-medium">{{ formatDate(item.ot_date) }}</span>
               </template>
-              <template v-slot:item.from_shift_type="{ item }">
-                <div class="d-flex justify-center align-center w-100">
-                  <v-chip :color="getShiftTypeColor(item.from_shift_type)" size="small" label>
-                    <span class="font-weight-medium">{{ getShiftType(item.from_shift_type) }}</span>
-                  </v-chip>
-                </div>
+              <template v-slot:item.time_from="{ item }">
+                <span class="font-weight-medium">{{ formatTime(item.time_from) }}</span>
               </template>
-              <template v-slot:item.to_off_date="{ item }">
-                <span class="font-weight-medium">{{ formatDate(item.to_off_date) }}</span>
+              <template v-slot:item.time_to="{ item }">
+                <span class="font-weight-medium">{{ formatTime(item.time_to) }}</span>
               </template>
-              <template v-slot:item.to_shift_type="{ item }">
-                <div class="d-flex justify-center align-center w-100">
-                  <v-chip :color="getShiftTypeColor(item.to_shift_type)" size="small" label>
-                    <span class="font-weight-medium">{{ getShiftType(item.to_shift_type) }}</span>
-                  </v-chip>
-                </div>
+              <template v-slot:item.hours="{ item }">
+                <span class="font-weight-medium">{{ item.hours ?? '-' }}</span>
+              </template>
+              <template v-slot:item.charge_to_date="{ item }">
+                <span class="font-weight-medium">{{ formatDate(item.charge_to_date) }}</span>
               </template>
 
               <template v-slot:item.status="{ item }">
@@ -224,15 +219,12 @@ interface Employee {
 
 interface ChangeDayOffApplication {
   emp_no: string
-  request_id: number | null
   status: 'P' | 'A' | 'R' | 'C' | string
-  reason: string | null
-  from_off_date: Date | string
-  from_shift_code: string | null
-  from_shift_type: string | null
-  to_off_date: Date | string
-  to_shift_code: string | null
-  to_shift_type: string | null
+  ot_date: string | null
+  time_from: string | null
+  time_to: string | null
+  hours: number | null
+  charge_to_date: string | null
 }
 
 // --- State ---
@@ -254,12 +246,12 @@ const employeeHeaders = [
 ]
 
 const changeDayOffHeaders = [
-  { title: 'Request No', key: 'request_id' },
-  { title: 'From Off Date', key: 'from_off_date' },
-  { title: 'From Shift Type', key: 'from_shift_type' },
-  { title: 'To Off Date', key: 'to_off_date' },
-  { title: 'To Shift Type', key: 'to_shift_type' },
-  { title: 'Reason', key: 'reason' },
+  { title: 'Attendance Date', key: 'ot_date' },
+  { title: 'Time From', key: 'time_from', align: 'center' },
+  { title: 'Time To', key: 'time_to', align: 'center' },
+  { title: 'Hours', key: 'hours', align: 'center' },
+  { title: 'Charge To Date', key: 'charge_to_date', align: 'center' },
+  { title: 'To Shift Type', key: 'to_shift_type', align: 'center' },
   { title: 'Status', key: 'status', align: 'center' },
   { title: 'Actions', key: 'actions', sortable: false, align: 'center' },
 ]
@@ -326,14 +318,9 @@ const selectEmployee = async (employee: Employee) => {
     const dFrom = formatDateOnly(authStore.payrollInit?.pay_fr ?? '')
     const dto = formatDateOnly(authStore.payrollInit?.pay_to ?? '')
 
-    const res = await Api.EmployeeChangeDayOffRequest(
-      employee.emp_no,
-      dFrom,
-      dto,
-      authStore.accessToken,
-    )
+    const res = await Api.EmployeeChangeDayOffRequest(employee.emp_no, authStore.accessToken)
 
-    const data = res.data.schedule
+    const data = res.data.dayOffs
 
     if (data && data.length > 0) {
       changeDayOffData.value = data
@@ -402,13 +389,13 @@ const checkWithPay = (val: string | null | undefined): boolean => {
 
 const isSelected = (changeDayOff: ChangeDayOffApplication) => {
   return selectedChangeDayOff.value.some(
-    (item) => item.request_id === changeDayOff.request_id && item.emp_no === changeDayOff.emp_no,
+    (item) => item.ot_date === changeDayOff.ot_date && item.emp_no === changeDayOff.emp_no,
   )
 }
 
 const toggleSelection = async (changeDayOff: ChangeDayOffApplication) => {
   const index = selectedChangeDayOff.value.findIndex(
-    (item) => item.request_id === changeDayOff.request_id && item.emp_no === changeDayOff.emp_no,
+    (item) => item.ot_date === changeDayOff.ot_date && item.emp_no === changeDayOff.emp_no,
   )
   if (index > -1) {
     selectedChangeDayOff.value.splice(index, 1)
@@ -434,7 +421,7 @@ const approveBulkChangeDayOff = async () => {
   try {
     const payload = selectedChangeDayOff.value.map((changeDayOff) => ({
       emp_no: changeDayOff.emp_no,
-      request_id: changeDayOff.request_id,
+      ot_date: changeDayOff.ot_date,
       status: 'A',
       action_date: dToday,
     }))

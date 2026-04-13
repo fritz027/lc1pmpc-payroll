@@ -223,8 +223,8 @@ export default {
       },
     })
   },
-  EmployeeChangeDayOffRequest(empNo: string, from: string, to: string, token: string) {
-    return Api.get(`${endPoint}/change-day-off/request?no=${empNo}&from=${from}&to=${to}`, {
+  EmployeeChangeDayOffRequest(empNo: string, token: string) {
+    return Api.get(`${endPoint}/change-day-off/request?no=${empNo}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

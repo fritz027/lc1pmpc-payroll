@@ -1,5 +1,5 @@
 <template>
-  <v-container max-width="1200">
+  <v-container>
     <v-row class="mb-4" align="center">
       <v-col cols="12" md="6">
         <h2 class="text-h5 font-weight-bold mb-1">Attendance Records</h2>
@@ -23,31 +23,66 @@
         <v-data-table
           :headers="headers"
           :items="attendanceRecords"
+          :items-per-page="-1"
           :loading="loading"
+          hide-default-footer
           hover
           class="text-no-wrap striped-table custom-table-border"
         >
-          <template v-slot:item.date_dt="{ item }">
-            <span class="font-weight-medium">{{ formatDateDisplay(item.date_dt) }}</span>
+          <template v-slot:item.attendance_date="{ item }">
+            <span class="font-weight-medium">{{ formatDateDisplay(item.attendance_date) }}</span>
           </template>
 
-          <template v-slot:item.time_in="{ item }">
-            {{ formatTimeDisplay(item.time_in) }}
+          <template v-slot:item.actual_time_in="{ item }">
+            {{ formatTimeDisplay(item.actual_time_in) }}
           </template>
-          <template v-slot:item.time_out="{ item }">
-            {{ formatTimeDisplay(item.time_out) }}
+          <template v-slot:item.actual_time_out="{ item }">
+            {{ formatTimeDisplay(item.actual_time_out) }}
           </template>
-          <template v-slot:item.status="{ item }">
-            <v-chip
-              :color="getStatusColor(item.status)"
-              size="small"
-              class="font-weight-bold text-uppercase"
-              >{{ item.status }}
-            </v-chip>
+          <template v-slot:item.requested_time_in="{ item }">
+            {{ formatTimeDisplay(item.requested_time_in) }}
+          </template>
+          <template v-slot:item.requested_time_out="{ item }">
+            {{ formatTimeDisplay(item.requested_time_out) }}
+          </template>
+          <template v-slot:item.request_status="{ item }">
+            <div v-if="item.requested_time_in || item.requested_time_out">
+              <v-chip
+                :color="getStatusColor(item.request_status ?? 'PENDING')"
+                size="small"
+                class="font-weight-bold text-uppercase"
+              >
+                {{ item.request_status }}
+              </v-chip>
+            </div>
           </template>
           <template v-slot:item.actions="{ item }">
-            <div class="d-flex justify-end" v-if="item.status = 'Pending'">
-              <v-tooltip text="Delete Record" location="top">
+            <div
+              class="d-flex justify-end"
+              style="gap: 8px"
+              v-if="item.request_status === 'PENDING'"
+            >
+              <v-tooltip text="File Request / Edit" location="top">
+                <template v-slot:activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    icon="mdi-pencil"
+                    variant="text"
+                    color="teal-darken-1"
+                    size="small"
+                    @click="openRequestDialog(item)"
+                  ></v-btn>
+                </template>
+              </v-tooltip>
+
+              <v-tooltip
+                text="Delete Record"
+                location="top"
+                v-if="
+                  (item.requested_time_in || item.requested_time_out) &&
+                  item.request_status === 'Pending'
+                "
+              >
                 <template v-slot:activator="{ props }">
                   <v-btn
                     v-bind="props"
@@ -181,13 +216,14 @@ import { useAuthStore } from '@/stores/auth'
 
 interface AttendanceRecord {
   emp_no: string
-  date_dt: string
-  shift_code: string | null
-  time_in: string | null
-  time_out: string | null
-  date_posted: string | null
-  init_cd?: string | null
-  phalf?: string | null
+  attendance_date: string
+  shift_code: string
+  actual_time_in: string | null
+  actual_time_out: string | null
+  requested_time_in: string | null
+  requested_time_out: string | null
+  request_status: string | null
+  reason: string
 }
 
 interface Shift {
@@ -213,29 +249,32 @@ const shiftOptions = ref<ShiftSelect[]>([])
 const attendanceRecords = ref<AttendanceRecord[]>([])
 const isFormValid = ref(false)
 const errorMessage = ref('')
+const fromTable = ref(false)
 
 // Default empty form state
 const defaultForm = {
   date_dt: '',
+  original_date_dt: '',
   shift_code: '',
   time_in: '',
-  break_out: '',
   time_out: '',
   date_posted: '',
   init_cd: '',
   phalf: '',
   reason: '',
-  status: 'Pending',
+  request_status: 'Pending',
 }
 
 const formData = ref({ ...defaultForm })
 
 const headers = [
-  { title: 'Date', key: 'date_dt', align: 'start' },
+  { title: 'Date', key: 'attendance_date', align: 'start' },
   { title: 'Shift', key: 'shift_code' },
-  { title: 'Time In', key: 'time_in' },
-  { title: 'Time Out', key: 'time_out' },
-  { title: 'Status', key: 'status', align: 'center' },
+  { title: 'Time In', key: 'actual_time_in' },
+  { title: 'Time Out', key: 'actual_time_out' },
+  { title: 'Requested Time In', key: 'requested_time_in' },
+  { title: 'Requested Time Out', key: 'requested_time_out' },
+  { title: 'Status', key: 'request_status', align: 'center' },
   { title: 'Actions', key: 'actions', sortable: false, align: 'end' },
 ]
 
@@ -290,9 +329,9 @@ const fetchAttendance = async () => {
     const to = formatDateOnly(authStore.payrollInit?.pay_to ?? '')
     if (!from || !to) return
 
-    const res = await Api.AttendanceRecords(from, to, authStore.accessToken)
-    console.log(res.data.attendance)
-    attendanceRecords.value = res.data.attendance
+    const res = await Api.AttendaceRecordsByEmployee(from, to, authStore.accessToken)
+
+    attendanceRecords.value = res.data.attendanceRecords
   } catch (error) {
     console.error('Failed to fetch attendance:', error)
   } finally {
@@ -303,6 +342,25 @@ const fetchAttendance = async () => {
 const openAddDialog = () => {
   isEditing.value = false
   formData.value = { ...defaultForm }
+  fromTable.value = false
+  dialog.value = true
+}
+
+const openRequestDialog = (item: AttendanceRecord) => {
+  isEditing.value = true
+  formData.value = {
+    date_dt: formatForDateInput(item.attendance_date),
+    original_date_dt: item.attendance_date,
+    shift_code: item.shift_code || '',
+    time_in: formatForTimeInput(item.requested_time_in ?? item.actual_time_in),
+    time_out: formatForTimeInput(item.requested_time_out ?? item.actual_time_out),
+    reason: '',
+    date_posted: '',
+    init_cd: '',
+    phalf: '',
+    request_status: item.request_status ?? 'Pending',
+  }
+  fromTable.value = true
   dialog.value = true
 }
 
@@ -324,11 +382,11 @@ const editAttendance = (item: AttendanceRecord) => {
 
 const deleteAttendance = async (item: AttendanceRecord) => {
   try {
-    if (!item.date_dt || !item.shift_code) return
+    if (!item.attendance_date || !item.shift_code) return
 
     const res = await Api.RemoveAttendanceRequest(
       authStore.accessToken,
-      formatDateOnly(item.date_dt),
+      item.attendance_date,
       item.shift_code ?? '',
     )
     if (!res.data.success) {
@@ -366,19 +424,22 @@ const saveAttendance = async () => {
     return
   }
 
-  const isDuplicate = attendanceRecords.value.some((item: any) => {
-    const existingDate = new Date(item.date_dt)
-    const newDate = new Date(formData.value.date_dt)
-    return (
-      existingDate.getDate() === newDate.getDate() &&
-      existingDate.getMonth() === newDate.getMonth() &&
-      existingDate.getFullYear() === newDate.getFullYear()
-    )
-  })
+  if (!fromTable.value) {
+    // For new entries, check for duplicates
+    const isDuplicate = attendanceRecords.value.some((item: any) => {
+      const existingDate = new Date(item.date_dt)
+      const newDate = new Date(formData.value.date_dt)
+      return (
+        existingDate.getDate() === newDate.getDate() &&
+        existingDate.getMonth() === newDate.getMonth() &&
+        existingDate.getFullYear() === newDate.getFullYear()
+      )
+    })
 
-  if (isDuplicate) {
-    errorMessage.value = 'Attendace already exists for this date.'
-    return
+    if (isDuplicate) {
+      errorMessage.value = 'Attendace already exists for this date.'
+      return
+    }
   }
 
   try {
@@ -398,11 +459,11 @@ const saveAttendance = async () => {
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'Pending':
+    case 'PENDING':
       return 'orange-darken-2'
-    case 'Approved':
+    case 'APPROVED':
       return 'green-lighten-1'
-    case 'Rejected':
+    case 'REJECTED':
       return 'red-lighten-1'
     default:
       return ''
@@ -436,7 +497,7 @@ const setShiftCode = async (date: string) => {
     const shiftDetails = shifts.value.find(
       (shift) => shift.shift_code === res.data.shiftCode.shift_code,
     )
-    if (shiftDetails) {
+    if (shiftDetails && !fromTable.value) {
       formData.value.time_in = formatForTimeInput(shiftDetails.time_in)
       formData.value.time_out = formatForTimeInput(
         shiftDetails.time_out_2nd ?? shiftDetails.time_in,
@@ -471,7 +532,8 @@ watch(
   (value) => {
     if (value) {
       const shiftDetails = shifts.value.find((shift) => shift.shift_code === value)
-      if (shiftDetails) {
+      if (shiftDetails && !fromTable.value) {
+        console.log('Auto-populating times based on shift selection:', shiftDetails)
         formData.value.time_in = formatForTimeInput(shiftDetails.time_in)
         formData.value.time_out = formatForTimeInput(
           shiftDetails.time_out_2nd ?? shiftDetails.time_in,

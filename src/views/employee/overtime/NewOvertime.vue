@@ -29,11 +29,21 @@
               clearable
             ></v-text-field>
           </v-col>
+          <v-col cols="12" sm="6">
+            <v-select
+              v-model="formData.shift_code"
+              :items="shiftOptions"
+              label="Shift Code"
+              readonly="true"
+              variant="outlined"
+              density="comfortable"
+            ></v-select>
+          </v-col>
         </v-row>
 
         <v-divider class="mb-4 mt-2"></v-divider>
 
-        <h3 class="text-subtitle-1 font-weight-medium mb-2 text-primary">Advance Time</h3>
+        <!-- <h3 class="text-subtitle-1 font-weight-medium mb-2 text-primary">Advance Time</h3>
         <v-row>
           <v-col cols="12" sm="6" class="py-2">
             <v-text-field
@@ -53,7 +63,7 @@
               density="comfortable"
             ></v-text-field>
           </v-col>
-        </v-row>
+        </v-row> -->
 
         <v-divider class="mb-4 mt-2"></v-divider>
 
@@ -66,6 +76,7 @@
               type="time"
               variant="outlined"
               density="comfortable"
+              :rules="otTimeInRules"
             ></v-text-field>
           </v-col>
           <v-col cols="12" sm="6" class="py-2">
@@ -75,6 +86,7 @@
               type="time"
               variant="outlined"
               density="comfortable"
+              :rules="otTimeOutRules"
             ></v-text-field>
           </v-col>
         </v-row>
@@ -91,6 +103,7 @@
               variant="outlined"
               density="comfortable"
               clearable
+              :rules="breakTimeOutRules"
             ></v-text-field>
           </v-col>
           <v-col cols="12" sm="6" class="py-2">
@@ -101,6 +114,7 @@
               variant="outlined"
               density="comfortable"
               clearable
+              :rules="breakTimeInRules"
             ></v-text-field>
           </v-col>
         </v-row>
@@ -124,14 +138,34 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import Api from '@/Api/Attendance'
+
+interface Shift {
+  shift_code: string
+  time_in: string
+  time_out: string
+  time_in_2nd: string | null
+  time_out_2nd: string | null
+  xover: number
+  brk_1_hr: number
+}
+
+interface ShiftSelect {
+  value: string
+  title: string
+}
 
 const emit = defineEmits(['close', 'saved'])
 const authStore = useAuthStore()
 const isFormValid = ref(false)
 const errorMessage = ref('')
 const overtimeForm = ref<any>(null)
+const shiftOptions = ref<ShiftSelect[]>([])
+const shifts = ref<Shift[]>([])
+const timeIn = ref('')
+const timeOut = ref('')
 
 const props = defineProps<{ editData: any | null }>()
 const isEditMode = computed(() => !!props.editData)
@@ -139,6 +173,7 @@ const isEditMode = computed(() => !!props.editData)
 // Reactive form object holding all the fields
 const formData = ref({
   ot_date: '',
+  shift_code: '',
   adv_time_in: '',
   adv_time_out: '',
   ot_time_in: '',
@@ -165,7 +200,9 @@ const formatForTimeInput = (rawTime: string | null) => {
   return ''
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await fetchShifts()
+
   if (props.editData) {
     formData.value.ot_date = formatForDateInput(props.editData.ot_date)
     formData.value.adv_time_in = formatForTimeInput(props.editData.adv_time_in)
@@ -176,6 +213,32 @@ onMounted(() => {
     formData.value.ot_brktime_in = formatForTimeInput(props.editData.ot_brktime_in)
   }
 })
+
+const formatTimeDisplay = (timeString: string | null | undefined) => {
+  if (!timeString) return '-'
+  // Handle both raw DB formats and formatted 'HH:mm' inputs
+  const timeToParse = timeString.length <= 5 ? `1970-01-01T${timeString}:00` : timeString
+  return new Date(timeToParse).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+}
+
+const fetchShifts = async () => {
+  try {
+    const res = await Api.Shifts(authStore.accessToken)
+    const rawData = res.data.shiftCode
+    shiftOptions.value = rawData.map((shift: Shift) => ({
+      value: shift.shift_code,
+      title: `${shift.shift_code} | ${formatTimeDisplay(shift.time_in)} - ${formatTimeDisplay(shift.time_out)}
+              ${
+                shift.time_in_2nd
+                  ? ` | ${formatTimeDisplay(shift.time_in_2nd)} - ${formatTimeDisplay(shift.time_out_2nd)}`
+                  : ''
+              }`,
+    }))
+    shifts.value = rawData
+  } catch (error) {
+    console.error('Failed to fetch shifts:', error)
+  }
+}
 
 const formatDate = (dateString: string) => {
   if (!dateString) return ''
@@ -217,6 +280,103 @@ const handleSave = () => {
     console.log(error)
   }
 }
+
+const setShiftCode = async (date: string) => {
+  try {
+    const res = await Api.EmployeeShift(authStore.accessToken, date)
+    formData.value.shift_code = res.data.shiftCode.shift_code
+
+    const shiftDetails = shifts.value.find(
+      (shift) => shift.shift_code === res.data.shiftCode.shift_code,
+    )
+    if (shiftDetails) {
+      timeIn.value = formatForTimeInput(shiftDetails.time_in)
+      timeOut.value = formatForTimeInput(shiftDetails.time_out_2nd ?? shiftDetails.time_out)
+    }
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+const timeToMinutes = (timeStr: string) => {
+  if (!timeStr) return 0
+  const [hours, minutes] = timeStr.split(':').map(Number)
+  return hours * 60 + minutes
+}
+
+const calculateTimeDiff = (start: string, end: string) => {
+  let startMins = timeToMinutes(start)
+  let endMins = timeToMinutes(end)
+  // Handle crossing midnight
+  if (endMins < startMins) {
+    endMins += 24 * 60
+  }
+  return endMins - startMins
+}
+
+const otTimeInRules = [
+  (v: string) => {
+    if (!v || !timeOut.value) return true
+    const otMins = timeToMinutes(v)
+    const outMins = timeToMinutes(timeOut.value)
+
+    // Checks if OT is before Timeout.
+    // The second condition prevents false errors for overnight shifts (e.g., Timeout 23:00, OT 01:00)
+    if (otMins < outMins && outMins - otMins < 12 * 60) {
+      return `Must start at or after schedule timeout (${formatTimeDisplay(timeOut.value)})`
+    }
+    return true
+  },
+]
+
+const otTimeOutRules = [
+  (v: string) => {
+    if (!v) return true
+    if (!formData.value.ot_time_in) return 'Please set Time In first'
+
+    const startMins = timeToMinutes(formData.value.ot_time_in)
+    const endMins = timeToMinutes(v)
+
+    // Strict same-day check: End time must be strictly greater than Start time
+    if (endMins <= startMins) {
+      return 'Time Out must be after Time In (Check AM/PM)'
+    }
+
+    return true
+  },
+]
+
+const breakTimeOutRules = [
+  (v: string) => {
+    if (!v) return true // Break is optional
+    if (!formData.value.ot_time_in) return 'Set Overtime Time In first'
+    const diff = calculateTimeDiff(formData.value.ot_time_in, v)
+    if (diff < 60) return 'Break must start at least 1 hour after Overtime In'
+    return true
+  },
+]
+
+const breakTimeInRules = [
+  (v: string) => {
+    if (!v && !formData.value.ot_brktime_out) return true // Both empty is fine
+    if (!v && formData.value.ot_brktime_out) return 'Please set Break Time In'
+    if (v && !formData.value.ot_brktime_out) return 'Please set Break Time Out first'
+
+    const diff = calculateTimeDiff(formData.value.ot_brktime_out, v)
+    if (diff !== 15 && diff !== 30) {
+      return `Break must be exactly 15 or 30 mins (Current: ${diff} mins)`
+    }
+    return true
+  },
+]
+
+watch(
+  () => formData.value.ot_date,
+  (newDate) => {
+    if (newDate) setShiftCode(newDate)
+  },
+  { immediate: true },
+)
 </script>
 
 <style scoped>
