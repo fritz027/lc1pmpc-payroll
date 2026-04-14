@@ -125,7 +125,7 @@
                   >
                     <template v-slot:activator="{ props }">
                       <div
-                        v-if="item.apprvd === '0'"
+                        v-if="item.apprvd !== '0'"
                         v-bind="props"
                         class="action-checkbox-wrapper"
                       >

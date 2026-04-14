@@ -271,6 +271,15 @@ const snackbar = ref(false)
 const snackbarMessage = ref('')
 const snackbarColor = ref('success')
 
+const pendingCounts = ref({
+  leaves: 5,        // Example: hardcoded for now, but you'll fetch this from an API
+  overtime: 2,
+  attendance: 0,
+  travel: 1,
+  dayOff: 0
+})
+
+
 // ==========================================
 // 2. USER PROFILE STATE
 // ==========================================
@@ -386,7 +395,7 @@ const passwordError = ref(false)
 const passwordErrorMessage = ref('')
 
 const rules = {
-  required: (v: any) => !!v || 'This field is required',
+  required: (v: string | unknown) => !!v || 'This field is required',
   matchPassword: (v: string) => v === newPassword.value || 'Passwords do not match',
   minLength: (v: string) => (v && v.length >= 8) || 'Minimum 8 characters',
 }
@@ -416,9 +425,11 @@ const savePassword = async () => {
         passwordError.value = true
         passwordErrorMessage.value = response.data.message
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       passwordError.value = true
-      passwordErrorMessage.value = error.response?.data?.message || 'Server error'
+      passwordErrorMessage.value =
+        (error as { response?: { data?: { message?: string } } }).response?.data?.message ||
+        'Server error'
     }
   }
 }
@@ -439,21 +450,21 @@ const MENU_CONFIG = [
     icon: 'mdi-account-group',
     roles: ['user', 'approver', 'admin', 'superadmin', 'hr'],
     items: [
-      { title: 'Announcement', icon: 'mdi-bullhorn', route: '/announcements' },
-      { title: 'Time Card', icon: 'mdi-timetable', route: '/timecard' },
-      { title: 'Pay Slip', icon: 'mdi-receipt-text', route: '/payslip' },
-      { title: 'Suggestions', icon: 'mdi-lightbulb', route: '/suggestions' },
-      { title: 'Leave', icon: 'mdi-calendar-check', route: '/leave' },
-      { title: 'Over-Time', icon: 'mdi-clock-check-outline', route: '/over-time' },
-      { title: 'Attendance', icon: 'mdi-clipboard-account', route: '/attendance' },
-      { title: 'Travel Order', icon: 'mdi-rv-truck', route: '/travel-order' },
+      { title: 'Announcement', icon: 'mdi-bullhorn', route: '/announcements', roles: undefined },
+      { title: 'Time Card', icon: 'mdi-timetable', route: '/timecard', roles: undefined },
+      { title: 'Pay Slip', icon: 'mdi-receipt-text', route: '/payslip', roles: undefined },
+      { title: 'Suggestions', icon: 'mdi-lightbulb', route: '/suggestions', roles: undefined },
+      { title: 'Leave', icon: 'mdi-calendar-check', route: '/leave', roles: undefined },
+      { title: 'Over-Time', icon: 'mdi-clock-check-outline', route: '/over-time', roles: undefined },
+      { title: 'Attendance', icon: 'mdi-clipboard-account', route: '/attendance', roles: undefined },
+      { title: 'Travel Order', icon: 'mdi-rv-truck', route: '/travel-order', roles: undefined },
       {
         title: 'Change Day-off',
         icon: 'mdi-clipboard-text-clock',
         route: '/schedule',
         roles: ['manager', 'admin', 'superadmin', 'hr'],
       },
-      { title: 'Code Of Conduct', icon: 'mdi-file-document-multiple', route: '/code-of-conduct' },
+      { title: 'Code Of Conduct', icon: 'mdi-file-document-multiple', route: '/code-of-conduct', roles: undefined },
     ],
   },
   {
@@ -461,11 +472,11 @@ const MENU_CONFIG = [
     icon: 'mdi-check-decagram',
     roles: ['approver', 'admin', 'superadmin', 'hr'],
     items: [
-      { title: 'Leaves', icon: 'mdi-calendar-clock', route: '/admin/leave-approve' },
-      { title: 'Over-Time', icon: 'mdi-archive-clock-outline', route: '/admin/overtime-approve' },
-      { title: 'Attendance', icon: 'mdi-account-check', route: '/admin/attendance-approve' },
-      { title: 'Travel Order', icon: 'mdi-airplane-takeoff', route: '/admin/travel-order-approve' },
-      { title: 'Change Day-off', icon: 'mdi-sun-clock', route: '/admin/change-day-off-approve' },
+      { title: 'Leaves', icon: 'mdi-calendar-clock', route: '/admin/leave-approve', badgeKey: 'leaves', roles: undefined },
+      { title: 'Over-Time', icon: 'mdi-archive-clock-outline', route: '/admin/overtime-approve', badgeKey: 'overtime', roles: undefined },
+      { title: 'Attendance', icon: 'mdi-account-check', route: '/admin/attendance-approve', badgeKey: 'attendance', roles: undefined },
+      { title: 'Travel Order', icon: 'mdi-airplane-takeoff', route: '/admin/travel-order-approve', badgeKey: 'travel', roles: undefined },
+      { title: 'Change Day-off', icon: 'mdi-sun-clock', route: '/admin/change-day-off-approve', badgeKey: 'dayOff', roles: undefined },
     ],
   },
   {
@@ -473,10 +484,10 @@ const MENU_CONFIG = [
     icon: 'mdi-shield-account',
     roles: ['admin', 'superadmin', 'hr'],
     items: [
-      { title: 'Announcement Admin', icon: 'mdi-bullhorn', route: '/admin/announcements' },
-      { title: 'Suggestions Admin', icon: 'mdi-lightbulb-on', route: '/admin/suggestions' },
-      { title: 'Manpower Request', icon: 'mdi-account-hard-hat', route: '/admin/manpower-request' },
-      { title: 'Settings', icon: 'mdi-cog', route: '/admin/settings' },
+      { title: 'Announcement Admin', icon: 'mdi-bullhorn', route: '/admin/announcements', roles: undefined },
+      { title: 'Suggestions Admin', icon: 'mdi-lightbulb-on', route: '/admin/suggestions', roles: undefined },
+      { title: 'Manpower Request', icon: 'mdi-account-hard-hat', route: '/admin/manpower-request', roles: undefined },
+      { title: 'Settings', icon: 'mdi-cog', route: '/admin/settings', roles: undefined },
     ],
   },
   {
@@ -484,8 +495,8 @@ const MENU_CONFIG = [
     icon: 'mdi-account-key',
     roles: ['superadmin', 'hr'],
     items: [
-      { title: 'User Approvers', icon: 'mdi-clipboard-check', route: '/admin/user-approver' },
-      { title: 'User Roles', icon: 'mdi-account-multiple-plus', route: '/admin/user-roles' },
+      { title: 'User Approvers', icon: 'mdi-clipboard-check', route: '/admin/user-approver', roles: undefined },
+      { title: 'User Roles', icon: 'mdi-account-multiple-plus', route: '/admin/user-roles', roles: undefined },
     ],
   },
 ]

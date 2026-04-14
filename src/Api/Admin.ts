@@ -1,5 +1,15 @@
 import Api from '@/services/Api'
-import type { Announcement, PayslipPayloadSetting } from '@/types/general'
+import type {
+  Announcement,
+  BulkApproveAttendancePayload,
+  BulkApproveLeavePayload,
+  BulkApproveOvertimePayload,
+  BulkAppproveTravelPayload,
+  BulkApproveChangeDayOffPayload,
+  ManPowerRequestPayload,
+  PayslipPayloadSetting,
+  SaveBulkApprovalPayload,
+} from '@/types/general'
 import Employee from './Employee'
 
 const endPoint = `/pmdeux/admin`
@@ -155,7 +165,10 @@ export default {
       },
     })
   },
-  SaveBulkApproverPermission(token: string, payload: { approver_id: string; assignments: any[] }) {
+  SaveBulkApproverPermission(
+    token: string,
+    payload: { approver_id: string; assignments: SaveBulkApprovalPayload[] },
+  ) {
     return Api.post(`${endPoint}/bulk-update-approver-permission`, payload, {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -174,7 +187,7 @@ export default {
       },
     })
   },
-  BulkApproveLeave(token: string, payload: any) {
+  BulkApproveLeave(token: string, payload: BulkApproveLeavePayload) {
     return Api.patch(`${endPoint}/bulk-approve-leave`, payload, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -188,7 +201,7 @@ export default {
       },
     })
   },
-  BulkApproveOvertime(token: string, payload: any) {
+  BulkApproveOvertime(token: string, payload: BulkApproveOvertimePayload[]) {
     return Api.patch(`${endPoint}/bulk-approve-overtime`, payload, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -202,7 +215,7 @@ export default {
       },
     })
   },
-  BulkApproveAttendance(token: string, payload: any) {
+  BulkApproveAttendance(token: string, payload: BulkApproveAttendancePayload[]) {
     return Api.patch(`${endPoint}/bulk-approve-attendance`, payload, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -216,7 +229,7 @@ export default {
       },
     })
   },
-  BulkApproveTravelOrder(token: string, payload: any) {
+  BulkApproveTravelOrder(token: string, payload: BulkAppproveTravelPayload[]) {
     return Api.patch(`${endPoint}/bulk-approve-travel-order`, payload, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -230,7 +243,7 @@ export default {
       },
     })
   },
-  BulkApproveChangeDayOff(token: string, payload: any) {
+  BulkApproveChangeDayOff(token: string, payload: BulkApproveChangeDayOffPayload[]) {
     return Api.patch(`${endPoint}/bulk-approve-change-day-off`, payload, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -258,7 +271,7 @@ export default {
       },
     })
   },
-  CreateManPowerRequest(token: string, payload: any) {
+  CreateManPowerRequest(token: string, payload: ManPowerRequestPayload) {
     return Api.post(`${endPoint}/create/manpower-request`, payload, {
       headers: {
         Authorization: `Bearer ${token}`,

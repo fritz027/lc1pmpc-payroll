@@ -120,7 +120,7 @@
           <span class="font-weight-medium">{{ formatDate(item.leave_dt) }}</span>
         </template>
 
-        <template v-slot:item.status="{ item }">
+        <template #item.status="{ item }">
           <v-chip
             :color="getStatusColor(item.apprvd)"
             :variant="isApproved(item.apprvd) ? 'flat' : 'tonal'"

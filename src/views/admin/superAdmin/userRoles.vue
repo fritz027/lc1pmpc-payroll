@@ -20,7 +20,7 @@
         hover
         class="pa-2 striped-table custom-table-border"
       >
-        <template #item.role_name="{ item }">
+        <template #[`item.role_name`]="{ item }">
           <v-chip
             :color="getRoleColor(item.role_name)"
             size="small"
@@ -31,7 +31,7 @@
           </v-chip>
         </template>
 
-        <template #item.actions="{ item }">
+        <template #[`item.actions`]="{ item }">
           <div class="d-flex">
             <v-tooltip text="Edit User" location="top">
               <template #activator="{ props }">
@@ -130,6 +130,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { VForm } from 'vuetify/components'
 import adminService from '@/Api/Admin'
 import { useAuthStore } from '@/stores/auth'
 
@@ -156,12 +157,12 @@ const formRules = {
 }
 
 // --- Table Configuration ---
-const headers: any = [
-  { title: 'ID', key: 'id', align: 'start' },
-  { title: 'Employee No', key: 'emp_no', align: 'start' },
-  { title: 'Full Name', key: 'name', align: 'start' },
-  { title: 'Role', key: 'role_name', align: 'center' },
-  { title: 'Actions', key: 'actions', align: 'end', sortable: false },
+const headers = [
+  { title: 'ID', key: 'id', align: 'start' as const },
+  { title: 'Employee No', key: 'emp_no', align: 'start' as const },
+  { title: 'Full Name', key: 'name', align: 'start' as const },
+  { title: 'Role', key: 'role_name', align: 'center' as const },
+  { title: 'Actions', key: 'actions', align: 'end' as const, sortable: false },
 ]
 
 // --- Mock Data ---
@@ -173,7 +174,11 @@ const authStore = useAuthStore()
 // --- Form Logic ---
 const dialog = ref(false)
 const isEditing = ref(false)
-const formRef = ref<any>(null)
+
+// This creates a type based on the instance of the VForm component
+type VFormInstance = InstanceType<typeof VForm>
+
+const formRef = ref<VFormInstance | null>(null)
 
 const snackbar = reactive({
   show: false,
@@ -242,7 +247,7 @@ const openAddDialog = () => {
   dialog.value = true
 }
 
-const openEditDialog = (item: any) => {
+const openEditDialog = (item: User) => {
   isEditing.value = true
   Object.assign(editedItem, item)
   dialog.value = true
@@ -292,16 +297,18 @@ const saveUser = async () => {
       // SUCCESS FEEDBACK
       showToast(isEditing.value ? 'User updated!' : 'User added!', 'green-darken-1')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     // ERROR FEEDBACK
-    const errorMsg = error.response?.data?.message || 'Connection error'
+    const errorMsg =
+      (error as { response?: { data?: { message?: string } } }).response?.data?.message ||
+      'Connection error'
     showToast(errorMsg, 'red-darken-2')
   } finally {
     loading.value = false
   }
 }
 
-const confirmDelete = async (item: any) => {
+const confirmDelete = async (item: User) => {
   if (!confirm(`Remove access for ${item.name}?`)) return
 
   try {
@@ -313,8 +320,8 @@ const confirmDelete = async (item: any) => {
     }
     showToast('Successfully deleted', 'green-darken-1')
     users.value = users.value.filter((u) => u.id !== item.id)
-  } catch (error) {
-    console.log()
+  } catch (error: unknown) {
+    console.log(error)
   }
 }
 </script>

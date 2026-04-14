@@ -29,26 +29,26 @@
           hover
           class="text-no-wrap striped-table custom-table-border"
         >
-          <template v-slot:item.attendance_date="{ item }">
+          <template v-slot:[`item.attendance_date`]="{ item }">
             <span class="font-weight-medium">{{ formatDateDisplay(item.attendance_date) }}</span>
           </template>
 
-          <template v-slot:item.actual_time_in="{ item }">
+          <template v-slot:[`item.actual_time_in`]="{ item }">
             {{ formatTimeDisplay(item.actual_time_in) }}
           </template>
-          <template v-slot:item.actual_time_out="{ item }">
+          <template v-slot:[`item.actual_time_out`]="{ item }">
             {{ formatTimeDisplay(item.actual_time_out) }}
           </template>
-          <template v-slot:item.requested_time_in="{ item }">
+          <template v-slot:[`item.requested_time_in`]="{ item }">
             {{ formatTimeDisplay(item.requested_time_in) }}
           </template>
-          <template v-slot:item.requested_time_out="{ item }">
+          <template v-slot:[`item.requested_time_out`]="{ item }">
             {{ formatTimeDisplay(item.requested_time_out) }}
           </template>
-          <template v-slot:item.request_status="{ item }">
+          <template v-slot:[`item.request_status`]="{ item }">
             <div v-if="item.requested_time_in || item.requested_time_out">
               <v-chip
-                :color="getStatusColor(item.request_status ?? 'PENDING')"
+                :color="getStatusColor(item.request_status ?? 'Pending')"
                 size="small"
                 class="font-weight-bold text-uppercase"
               >
@@ -56,13 +56,13 @@
               </v-chip>
             </div>
           </template>
-          <template v-slot:item.actions="{ item }">
-            <div
-              class="d-flex justify-end"
-              style="gap: 8px"
-              v-if="item.request_status === 'PENDING'"
-            >
-              <v-tooltip text="File Request / Edit" location="top">
+          <template v-slot:[`item.actions`]="{ item }">
+            <div class="d-flex justify-end" style="gap: 8px">
+              <v-tooltip
+                text="File Request / Edit"
+                location="top"
+                v-if="item.request_status !== 'APPROVED'"
+              >
                 <template v-slot:activator="{ props }">
                   <v-btn
                     v-bind="props"
@@ -364,21 +364,21 @@ const openRequestDialog = (item: AttendanceRecord) => {
   dialog.value = true
 }
 
-const editAttendance = (item: AttendanceRecord) => {
-  isEditing.value = true
-  // Format data perfectly for the native inputs
-  // formData.value = {
-  //   date_dt: formatForDateInput(item.date_dt),
-  //   shift_code: item.shift_code || '',
-  //   adv_time_in: formatForTimeInput(item.adv_time_in),
-  //   time_in: formatForTimeInput(item.time_in),
-  //   break_out: formatForTimeInput(item.break_out),
-  //   break_in: formatForTimeInput(item.break_in),
-  //   time_out: formatForTimeInput(item.time_out),
-  //   adv_time_out: formatForTimeInput(item.adv_time_out)
-  // }
-  dialog.value = true
-}
+// const editAttendance = (item: AttendanceRecord) => {
+//   isEditing.value = true
+//   // Format data perfectly for the native inputs
+//   // formData.value = {
+//   //   date_dt: formatForDateInput(item.date_dt),
+//   //   shift_code: item.shift_code || '',
+//   //   adv_time_in: formatForTimeInput(item.adv_time_in),
+//   //   time_in: formatForTimeInput(item.time_in),
+//   //   break_out: formatForTimeInput(item.break_out),
+//   //   break_in: formatForTimeInput(item.break_in),
+//   //   time_out: formatForTimeInput(item.time_out),
+//   //   adv_time_out: formatForTimeInput(item.adv_time_out)
+//   // }
+//   dialog.value = true
+// }
 
 const deleteAttendance = async (item: AttendanceRecord) => {
   try {
@@ -426,8 +426,8 @@ const saveAttendance = async () => {
 
   if (!fromTable.value) {
     // For new entries, check for duplicates
-    const isDuplicate = attendanceRecords.value.some((item: any) => {
-      const existingDate = new Date(item.date_dt)
+    const isDuplicate = attendanceRecords.value.some((item: AttendanceRecord) => {
+      const existingDate = new Date(item.attendance_date)
       const newDate = new Date(formData.value.date_dt)
       return (
         existingDate.getDate() === newDate.getDate() &&
@@ -459,7 +459,7 @@ const saveAttendance = async () => {
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'PENDING':
+    case 'Pending':
       return 'orange-darken-2'
     case 'APPROVED':
       return 'green-lighten-1'

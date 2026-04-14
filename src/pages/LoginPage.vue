@@ -64,7 +64,7 @@
                   :append-inner-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
                   @click:append-inner="showPassword = !showPassword"
                 />
-                <!-- 
+                <!--
                 <v-row align="center" justify="space-between" class="my-2">
                   <v-checkbox label="Remember Me" hide-details />
                   <v-btn variant="text" size="small" class="text-blue">Forgot Password?</v-btn>
@@ -122,8 +122,10 @@ const singIn = async () => {
     })
 
     router.push('/announcements')
-  } catch (error: any) {
-    errorMessage.value = error.response.data.message
+  } catch (error: unknown) {
+    errorMessage.value =
+      (error as { response?: { data?: { message?: string } } }).response?.data?.message ||
+      'Server error'
     console.log(error)
   }
 }
