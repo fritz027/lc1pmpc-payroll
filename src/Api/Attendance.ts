@@ -1,5 +1,5 @@
 import Api from '@/services/Api'
-
+import type { AttendanceRequestPayload } from '@/types/general'
 const endPoint = '/pmdeux/attendance'
 
 export default {
@@ -24,7 +24,7 @@ export default {
       },
     })
   },
-  AttendanceRequest(token: string, payload: any) {
+  AttendanceRequest(token: string, payload: AttendanceRequestPayload) {
     return Api.post(`${endPoint}/request`, payload, {
       headers: {
         Authorization: `Bearer ${token}`,

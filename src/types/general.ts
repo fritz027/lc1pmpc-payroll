@@ -23,6 +23,11 @@ export interface GetPaySlip {
   format: string
 }
 
+export interface Company {
+  company_code: string
+  company_name: string
+}
+
 export interface Suggestions {
   id: number
   title: string
@@ -65,7 +70,7 @@ export interface SaveBulkApprovalPayload {
 export interface BulkApproveLeavePayload {
   emp_no: string
   leave_dt: string
-  for_year: string
+  for_year: number
   leave_cd: string
 }
 
@@ -107,4 +112,29 @@ export interface ManPowerRequestPayload {
   educ_attainment: string
   status: number | string // Get the value (e.g. 'O' from 'Open')
   remarks: string
+}
+
+export interface TravelOrderPayload {
+  travel_dt_out: string | Date | null,
+  travel_dt_in: string | Date | null,
+  remarks: string,
+  destination: string,
+  reason: string,
+  travel_passno: string,
+  emp_no: string,
+  approved: number | boolean,
+}
+
+
+export interface AttendanceRequestPayload {
+  date_dt: string;
+    original_date_dt: string;
+    shift_code: string;
+    time_in: string;
+    time_out: string;
+    date_posted: string;
+    init_cd: string;
+    phalf: string;
+    reason: string;
+    request_status: string;
 }

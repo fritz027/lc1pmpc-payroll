@@ -16,13 +16,13 @@
         class="elevation-0 striped-table custom-table-border"
         density="compact"
       >
-        <template v-slot:item.status="{ value }">
+        <template v-slot:[`item.status`]="{ value }">
           <v-chip :color="getStatusColor(value)" size="small" label>
             {{ getStatusText(value) }}
           </v-chip>
         </template>
 
-        <template v-slot:item.actions="{ item }">
+        <template v-slot:[`item.actions`]="{ item }">
           <v-btn icon="mdi-eye" variant="text" size="small" @click="viewRequest(item)"></v-btn>
         </template>
       </v-data-table>
@@ -189,10 +189,11 @@
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import Api from '@/Api/Admin'
+import { VForm } from 'vuetify/components'
 
 const authStore = useAuthStore()
 const dialog = ref(false)
-const form = ref(null) // Added missing ref for the <v-form>
+const form = ref<InstanceType<typeof VForm> | null>(null) // Added missing ref for the <v-form>
 
 interface ManpowerRequest {
   request_number: string
@@ -306,7 +307,7 @@ const getStatusText = (status: string) => {
 const openNewRequest = () => {
   isEditing.value = false // Set edit state to false
   formData.value = { ...defaultForm } // Reset form to default
-  if (form.value) (form.value as any).resetValidation() // Clear any old errors
+  if (form.value) form.value.resetValidation() // Clear any old errors
   dialog.value = true
 }
 
@@ -333,7 +334,7 @@ const viewRequest = (item: ManpowerRequest) => {
 
 const saveRequest = async () => {
   if (form.value) {
-    const { valid } = await (form.value as any).validate()
+    const { valid } = await form.value.validate()
     if (!valid) return // Stop if validation fails
   }
 

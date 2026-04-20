@@ -22,6 +22,7 @@
               :items-per-page="-1"
               hover
               class="dense-table"
+              :loading="isLoading"
             >
               <template v-slot:item="{ item, index }">
                 <tr
@@ -62,7 +63,7 @@
         >
           <div v-if="selectedEmployee" class="pa-3 bg-white border-b d-flex align-center">
             <div>
-              <div class="text-caption text-grey">Employee Leave Applications</div>
+              <div class="text-caption text-grey">Employee Travel Order Applications</div>
               <div class="text-subtitle-1 font-weight-bold">{{ selectedEmployee.fullName }}</div>
             </div>
 
@@ -70,22 +71,22 @@
 
             <v-fade-transition>
               <v-btn
-                v-if="selectedLeaves.length > 0"
+                v-if="selectedto.length > 0"
                 color="success"
                 prepend-icon="mdi-check-all"
                 elevation="1"
                 rounded="pill"
-                @click="approveBulkLeaves"
+                @click="approveBulkTravelOrder"
               >
-                Approve Selected ({{ selectedLeaves.length }})
+                Approve Selected ({{ selectedto.length }})
               </v-btn>
             </v-fade-transition>
           </div>
 
           <div class="flex-grow-1 overflow-auto custom-scrollbar pa-2">
             <v-data-table
-              :headers="leaveHeaders"
-              :items="leaveData"
+              :headers="toHeaders"
+              :items="toData"
               density="compact"
               hide-default-footer
               class="dense-table text-no-wrap border rounded-0"
@@ -101,39 +102,46 @@
                 </div>
               </template>
 
-              <template v-slot:item.leave_dt="{ item }">
-                <span class="font-weight-medium">{{ formatDate(item.leave_dt) }}</span>
+              <template v-slot:[`item.travelDate`]="{ item }">
+                <span class="font-weight-medium">{{ formatDate(item.travel_dt_out) }}</span>
               </template>
-
-              <template v-slot:item.status="{ item }">
+              <template v-slot:[`item.travel_dt_out`]="{ item }">
+                <span class="font-weight-medium">{{ formatTime(item.travel_dt_out) }}</span>
+              </template>
+              <template v-slot:[`item.travel_dt_in`]="{ item }">
+                <span class="font-weight-medium">{{ formatTime(item.travel_dt_in) }}</span>
+              </template>
+              <template v-slot:[`item.approved`]="{ item }">
                 <v-chip
-                  :color="getStatusColor(item.apprvd)"
+                  :color="getStatusColor(item.approved)"
                   size="x-small"
                   label
                   class="font-weight-bold"
                 >
-                  {{ item.apprvd === '1' || item.apprvd === 'Y' ? 'Approved' : 'Pending' }}
+                  {{
+                    item.approved === '1' || item.approved === 'Y' || item.approved === 1
+                      ? 'Approved'
+                      : 'Pending'
+                  }}
                 </v-chip>
               </template>
-              <template v-slot:item.actions="{ item }">
+              <template v-slot:[`item.actions`]="{ item }">
                 <div class="d-flex justify-center align-center w-100">
                   <v-tooltip
-                    :text="
-                      isApproved(item.date_posted) ? 'Already Approved' : 'Select for Approval'
-                    "
+                    :text="isApproved(item.approved) ? 'Already Approved' : 'Select for Approval'"
                     location="top"
                   >
                     <template v-slot:activator="{ props }">
                       <div
-                        v-if="item.apprvd !== '0'"
+                        v-if="!item.approved || item.approved === '0' || item.approved === 0"
                         v-bind="props"
                         class="action-checkbox-wrapper"
                       >
                         <v-checkbox-btn
-                          :model-value="isApproved(item.date_posted) || isSelected(item)"
-                          :readonly="isApproved(item.date_posted)"
-                          :color="isApproved(item.date_posted) ? 'success' : 'primary'"
-                          :icon="isApproved(item.date_posted) ? 'mdi-check-circle' : undefined"
+                          :model-value="isApproved(item.approved) || isSelected(item)"
+                          :readonly="isApproved(item.approved)"
+                          :color="isApproved(item.approved) ? 'success' : 'primary'"
+                          :icon="isApproved(item.approved) ? 'mdi-check-circle' : undefined"
                           density="compact"
                           class="centered-checkbox"
                           @change="toggleSelection(item)"
@@ -204,35 +212,29 @@ interface Employee {
   fullName: string
 }
 
-interface LeaveApplication {
-  apply_on: string
-  as_fullname: string
-  comp_apply_on: string
-  confidential: string
-  date_posted: string | null
+interface TravelOrderApplication {
   emp_no: string
-  apprvd: string
-  for_year: number
-  init_cd: string | null
-  leave_cd: string
-  leave_dt: string
-  no_hrs: number
-  phalf: string | null
-  with_pay: string
+  travel_passno: string
+  travel_dt_out: string
+  travel_dt_in: string
+  destination: string
   reason: string
+  remarks: string
+  approved: number
 }
 
 // --- State ---
 const authStore = useAuthStore()
 const searchQuery = ref('')
 const selectedEmployee = ref<Employee | null>(null)
-const leaveData = ref<LeaveApplication[]>([])
+const toData = ref<TravelOrderApplication[]>([])
 const employees = ref<Employee[]>([])
-const selectedLeaves = ref<LeaveApplication[]>([])
+const selectedto = ref<TravelOrderApplication[]>([])
 const snackbar = ref(false)
 const snackbarMessage = ref('')
 const snackbarColor = ref('success')
 const isProcessing = ref(false)
+const isLoading = ref(false)
 
 // --- Headers ---
 const employeeHeaders = [
@@ -240,13 +242,15 @@ const employeeHeaders = [
   { title: 'Employee Name', key: 'fullName', align: 'start', sortable: true, width: '70%' },
 ]
 
-const leaveHeaders = [
-  { title: 'Leave Type', key: 'leave_cd' },
-  { title: 'Leave Date', key: 'leave_dt' },
-  { title: 'Hours', key: 'no_hrs' },
-  { title: 'With Pay', key: 'with_pay', align: 'center' },
+const toHeaders = [
+  { title: 'Travel Pass No.', key: 'travel_passno', align: 'start' },
+  { title: 'Travel Order Date', key: 'travelDate', align: 'start' },
+  { title: 'Travel Time Out', key: 'travel_dt_out' },
+  { title: 'Travel Time In', key: 'travel_dt_in' },
+  { title: 'Destination', key: 'destination' },
   { title: 'Reason', key: 'reason' },
-  { title: 'Status', key: 'status', align: 'center' },
+  { title: 'Remarks', key: 'remarks' },
+  { title: 'Status', key: 'approved', align: 'center' },
   { title: 'Actions', key: 'actions', sortable: false, align: 'center' },
 ]
 
@@ -259,41 +263,43 @@ const filteredEmployees = computed(() => {
   )
 })
 
-const isApproved = (datePosted: string | null) => {
-  return datePosted !== null && datePosted !== '00/00/0000'
+const isApproved = (approve: string | null | number) => {
+  return approve === 1 || approve === '1'
 }
 
-const getStatusColor = (datePosted: string | null) => {
-  return isApproved(datePosted) ? 'success' : 'warning'
+const getStatusColor = (approve: string | null | number) => {
+  return approve === 1 || approve === '1' ? 'success' : 'warning'
 }
 
-const doneApproved = (approve: string) => {
-  if (approve === '1' || approve === 'Y') return 'success'
-  return 'warning'
-}
+// const doneApproved = (approve: string) => {
+//   if (approve === '1' || approve === 'Y') return 'success'
+//   return 'warning'
+// }
 
 const selectEmployee = async (employee: Employee) => {
   try {
+    isLoading.value = true
     if (!employee) return
 
     // Immediately set selected employee and wipe old data to prevent ghosts
     selectedEmployee.value = employee
-    leaveData.value = []
+    toData.value = []
 
     const dFrom = formatDateOnly(authStore.payrollInit?.pay_fr ?? '')
     const dto = formatDateOnly(authStore.payrollInit?.pay_to ?? '')
 
-    const res = await Api.FetchEmployeeLeaveByApprover(
+    const res = await Api.EmployeeTravelOrderRequest(
       employee.emp_no,
       dFrom,
       dto,
       authStore.accessToken,
     )
 
-    const data = res.data.leave
+    console.log(res.data)
+    const data = res.data.travelOrder
 
     if (data && data.length > 0) {
-      leaveData.value = data
+      toData.value = data
     }
 
     // Auto-scroll logic for Mobile devices
@@ -307,6 +313,8 @@ const selectEmployee = async (employee: Employee) => {
     }
   } catch (error) {
     console.log(error)
+  }finally {
+    isLoading.value = false
   }
 }
 
@@ -314,7 +322,7 @@ const loadEmployees = async () => {
   try {
     const dFrom = formatDateOnly(authStore.payrollInit?.pay_fr ?? '')
     const dto = formatDateOnly(authStore.payrollInit?.pay_to ?? '')
-    const response = await Api.FetchEmployeeByApprover(authStore.accessToken, 'leave', dFrom, dto)
+    const response = await Api.FetchEmployeeByApprover(authStore.accessToken, 'travel', dFrom, dto)
     employees.value = response.data.employees
   } catch (error) {
     console.log(error)
@@ -345,55 +353,41 @@ const formatDate = (dateString: string) => {
   })
 }
 
-const checkWithPay = (val: string | null | undefined): boolean => {
-  if (!val) return false
 
-  const normalized = val.toString().trim().toUpperCase()
-  return normalized === 'Y' || normalized === '1' || normalized === 'TRUE'
-}
-
-const isSelected = (leave: LeaveApplication) => {
-  return selectedLeaves.value.some(
-    (item) => item.leave_dt === leave.leave_dt && item.emp_no === leave.emp_no,
+const isSelected = (to: TravelOrderApplication) => {
+  return selectedto.value.some(
+    (item) => item.travel_passno === to.travel_passno && item.emp_no === to.emp_no,
   )
 }
 
-const toggleSelection = async (leave: LeaveApplication) => {
-  const index = selectedLeaves.value.findIndex(
-    (item) => item.leave_dt === leave.leave_dt && item.emp_no === leave.emp_no,
+const toggleSelection = async (to: TravelOrderApplication) => {
+  const index = selectedto.value.findIndex(
+    (item) => item.travel_passno === to.travel_passno && item.emp_no === to.emp_no,
   )
   if (index > -1) {
-    selectedLeaves.value.splice(index, 1)
+    selectedto.value.splice(index, 1)
   } else {
-    selectedLeaves.value.push(leave)
+    selectedto.value.push(to)
   }
 }
 
-const rejectLeave = async (leave: LeaveApplication) => {
-  try {
-    console.log('Reject clicked for:', leave)
-    // Add your reject logic/API call here
-  } catch (error) {
-    console.log(error)
-  }
-}
 
-const approveBulkLeaves = async () => {
-  if (selectedLeaves.value.length === 0) return
+const approveBulkTravelOrder = async () => {
+  if (selectedto.value.length === 0) return
   isProcessing.value = true
 
   try {
-    const payload = selectedLeaves.value.map((leave) => ({
-      emp_no: leave.emp_no,
-      leave_dt: leave.leave_dt,
-      for_year: leave.for_year,
-      leave_cd: leave.leave_cd,
+    console.log(selectedto.value)
+    const payload = selectedto.value.map((to) => ({
+      emp_no: to.emp_no,
+      travel_passno: to.travel_passno,
+      approved: 1,
     }))
 
-    const res = await Api.BulkApproveLeave(authStore.accessToken, payload)
+    const res = await Api.BulkApproveTravelOrder(authStore.accessToken, payload)
 
     if (res.data.success) {
-      snackbarMessage.value = `Successfully approved ${selectedLeaves.value.length} applications.`
+      snackbarMessage.value = `Successfully approved ${selectedto.value.length} applications.`
       snackbarColor.value = 'success'
       snackbar.value = true
 
@@ -403,7 +397,7 @@ const approveBulkLeaves = async () => {
       }
 
       // Clear selection
-      selectedLeaves.value = []
+      selectedto.value = []
     }
   } catch (error) {
     console.error('Bulk Approval Error:', error)
@@ -413,6 +407,15 @@ const approveBulkLeaves = async () => {
   } finally {
     isProcessing.value = false
   }
+}
+
+const formatTime = (timeString: string | null) => {
+  if (!timeString) return '-'
+  return new Date(timeString).toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true, // Changes output to 24-hour format (e.g., "17:45")
+  })
 }
 
 onMounted(async () => {
@@ -429,6 +432,8 @@ watch(
     // Only trigger if we actually have a selected employee and valid payroll dates
     if (selectedEmployee.value && newVal) {
       selectEmployee(selectedEmployee.value)
+    } else {
+      loadEmployees() // Refresh employee list if payrollInit changes but no employee is selected
     }
   },
   { immediate: true },

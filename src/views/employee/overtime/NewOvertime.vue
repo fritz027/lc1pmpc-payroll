@@ -157,17 +157,28 @@ interface ShiftSelect {
   title: string
 }
 
+interface OvertimeRecord {
+  ot_date: string
+  adv_time_in: string | null
+  adv_time_out: string | null
+  ot_time_in: string | null
+  ot_time_out: string | null
+  ot_brktime_out: string | null
+  ot_brktime_in: string | null
+  shift_code?: string
+}
+
 const emit = defineEmits(['close', 'saved'])
 const authStore = useAuthStore()
 const isFormValid = ref(false)
 const errorMessage = ref('')
-const overtimeForm = ref<any>(null)
+const overtimeForm = ref<HTMLFormElement | null>(null)
 const shiftOptions = ref<ShiftSelect[]>([])
 const shifts = ref<Shift[]>([])
 const timeIn = ref('')
 const timeOut = ref('')
 
-const props = defineProps<{ editData: any | null }>()
+const props = defineProps<{ editData: OvertimeRecord | null }>()
 const isEditMode = computed(() => !!props.editData)
 
 // Reactive form object holding all the fields
@@ -305,7 +316,7 @@ const timeToMinutes = (timeStr: string) => {
 }
 
 const calculateTimeDiff = (start: string, end: string) => {
-  let startMins = timeToMinutes(start)
+  const startMins = timeToMinutes(start)
   let endMins = timeToMinutes(end)
   // Handle crossing midnight
   if (endMins < startMins) {

@@ -58,11 +58,30 @@
               class="group-item"
             >
               <template #prepend>
-                <v-icon class="submenu-icon-small" color="blue-lighten-2">{{ item.icon }}</v-icon>
+                <v-badge
+                  :content="pendingCounts[item.badgeKey as keyof typeof pendingCounts]"
+                  :model-value="!!pendingCounts[item.badgeKey as keyof typeof pendingCounts]"
+                  color="error"
+                  dot
+                  location="top end"
+                  v-if="rail && !hovered"
+                >
+                  <v-icon class="submenu-icon-small" color="blue-lighten-2">{{ item.icon }}</v-icon>
+                </v-badge>
+
+                <v-icon v-else class="submenu-icon-small" color="blue-lighten-2">{{ item.icon }}</v-icon>
               </template>
 
-              <v-list-item-title v-if="mobile || !rail || hovered">
-                {{ item.title }}
+              <v-list-item-title v-if="mobile || !rail || hovered" class="d-flex align-center w-100">
+                <span>{{ item.title }}</span>
+                <v-spacer></v-spacer>
+                <v-badge
+                  v-if="item.badgeKey && pendingCounts[item.badgeKey as keyof typeof pendingCounts] > 0"
+                  :content="pendingCounts[item.badgeKey as keyof typeof pendingCounts]"
+                  color="error"
+                  inline
+                  class="ml-2"
+                ></v-badge>
               </v-list-item-title>
               <v-list-item-title v-else>
                 <v-icon>{{ item.icon }}</v-icon>
@@ -272,10 +291,10 @@ const snackbarMessage = ref('')
 const snackbarColor = ref('success')
 
 const pendingCounts = ref({
-  leaves: 5,        // Example: hardcoded for now, but you'll fetch this from an API
-  overtime: 2,
+  leaves: 0,        // Example: hardcoded for now, but you'll fetch this from an API
+  overtime: 0,
   attendance: 0,
-  travel: 1,
+  travel: 0,
   dayOff: 0
 })
 
@@ -297,6 +316,9 @@ onMounted(() => {
 
   if (mobile.value) drawer.value = false
 
+  if (authStore.getPayrollInit) {
+    getPendingCounts(authStore.getPayrollInit.pay_fr, authStore.getPayrollInit.pay_to)
+  }
   checkPayrollInit()
 })
 
@@ -372,7 +394,7 @@ const payrollInitSetup = async () => {
   }
 }
 
-const confirmPayrollSelection = () => {
+const confirmPayrollSelection = async () => {
   if (!selectedPayroll.value) return
 
   authStore.setPayrollInit(selectedPayroll.value)
@@ -381,6 +403,7 @@ const confirmPayrollSelection = () => {
   snackbarMessage.value = `Payroll period ${selectedPayroll.value?.init_cd_full ?? ''} selected.`
   snackbarColor.value = 'success'
   snackbar.value = true
+  await getPendingCounts(selectedPayroll.value.pay_fr, selectedPayroll.value.pay_to)
 }
 
 // ==========================================
@@ -450,21 +473,22 @@ const MENU_CONFIG = [
     icon: 'mdi-account-group',
     roles: ['user', 'approver', 'admin', 'superadmin', 'hr'],
     items: [
-      { title: 'Announcement', icon: 'mdi-bullhorn', route: '/announcements', roles: undefined },
-      { title: 'Time Card', icon: 'mdi-timetable', route: '/timecard', roles: undefined },
-      { title: 'Pay Slip', icon: 'mdi-receipt-text', route: '/payslip', roles: undefined },
-      { title: 'Suggestions', icon: 'mdi-lightbulb', route: '/suggestions', roles: undefined },
-      { title: 'Leave', icon: 'mdi-calendar-check', route: '/leave', roles: undefined },
-      { title: 'Over-Time', icon: 'mdi-clock-check-outline', route: '/over-time', roles: undefined },
-      { title: 'Attendance', icon: 'mdi-clipboard-account', route: '/attendance', roles: undefined },
-      { title: 'Travel Order', icon: 'mdi-rv-truck', route: '/travel-order', roles: undefined },
+      { title: 'Announcement', icon: 'mdi-bullhorn', route: '/announcements', badgeKey: undefined, roles: undefined },
+      { title: 'Time Card', icon: 'mdi-timetable', route: '/timecard', badgeKey: undefined, roles: undefined },
+      { title: 'Pay Slip', icon: 'mdi-receipt-text', route: '/payslip', badgeKey: undefined, roles: undefined },
+      { title: 'Suggestions', icon: 'mdi-lightbulb', route: '/suggestions', badgeKey: undefined, roles: undefined },
+      { title: 'Leave', icon: 'mdi-calendar-check', route: '/leave', badgeKey: undefined, roles: undefined },
+      { title: 'Over-Time', icon: 'mdi-clock-check-outline', route: '/over-time', badgeKey: undefined, roles: undefined },
+      { title: 'Attendance', icon: 'mdi-clipboard-account', route: '/attendance', badgeKey: undefined, roles: undefined },
+      { title: 'Travel Order', icon: 'mdi-rv-truck', route: '/travel-order', badgeKey: undefined, roles: undefined },
       {
         title: 'Change Day-off',
         icon: 'mdi-clipboard-text-clock',
         route: '/schedule',
+        badgeKey: undefined,
         roles: ['manager', 'admin', 'superadmin', 'hr'],
       },
-      { title: 'Code Of Conduct', icon: 'mdi-file-document-multiple', route: '/code-of-conduct', roles: undefined },
+      { title: 'Code Of Conduct', icon: 'mdi-file-document-multiple', route: '/code-of-conduct', badgeKey: undefined, roles: undefined },
     ],
   },
   {
@@ -484,10 +508,10 @@ const MENU_CONFIG = [
     icon: 'mdi-shield-account',
     roles: ['admin', 'superadmin', 'hr'],
     items: [
-      { title: 'Announcement Admin', icon: 'mdi-bullhorn', route: '/admin/announcements', roles: undefined },
-      { title: 'Suggestions Admin', icon: 'mdi-lightbulb-on', route: '/admin/suggestions', roles: undefined },
-      { title: 'Manpower Request', icon: 'mdi-account-hard-hat', route: '/admin/manpower-request', roles: undefined },
-      { title: 'Settings', icon: 'mdi-cog', route: '/admin/settings', roles: undefined },
+      { title: 'Announcement Admin', icon: 'mdi-bullhorn', route: '/admin/announcements', badgeKey: undefined, roles: undefined },
+      { title: 'Suggestions Admin', icon: 'mdi-lightbulb-on', route: '/admin/suggestions', badgeKey: undefined, roles: undefined },
+      { title: 'Manpower Request', icon: 'mdi-account-hard-hat', route: '/admin/manpower-request', badgeKey: undefined, roles: undefined },
+      { title: 'Settings', icon: 'mdi-cog', route: '/admin/settings', badgeKey: undefined, roles: undefined },
     ],
   },
   {
@@ -495,11 +519,51 @@ const MENU_CONFIG = [
     icon: 'mdi-account-key',
     roles: ['superadmin', 'hr'],
     items: [
-      { title: 'User Approvers', icon: 'mdi-clipboard-check', route: '/admin/user-approver', roles: undefined },
-      { title: 'User Roles', icon: 'mdi-account-multiple-plus', route: '/admin/user-roles', roles: undefined },
+      { title: 'User Approvers', icon: 'mdi-clipboard-check', route: '/admin/user-approver', badgeKey: undefined, roles: undefined },
+      { title: 'User Roles', icon: 'mdi-account-multiple-plus', route: '/admin/user-roles', badgeKey: undefined, roles: undefined },
     ],
   },
 ]
+
+// ==========================================
+// 7. PENDING APPROVALS BADGE LOGIC (Example implementation, you would replace this with real API calls)
+// ==========================================
+
+const formatDateOnly = (dateString: string | Date) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
+}
+
+const getPendingCounts = async (dateFrom: string, dateTo: string) => {
+  // Simulate API call delay
+  try {
+    const response = await emloyeeApi.FetchPendingApprovalCount(
+      authStore.accessToken,
+      formatDateOnly(dateFrom) ?? '',
+      formatDateOnly(dateTo) ?? ''
+    )
+    if (!response.data.success) {
+      console.error('Failed to fetch pending counts:', response.data.message)
+      return
+    }
+
+    const data = response.data.pendingApprovals
+    pendingCounts.value = {
+      leaves: data.leave ?? 0,
+      overtime: data.ot ?? 0,
+      attendance: data.attendance ?? 0,
+      travel: data.travel ?? 0,
+      dayOff: data.changeOff ?? 0,
+    }
+
+    console.log('Pending counts updated:', pendingCounts.value, response.data)
+  } catch (error: unknown) {
+    console.error('Error fetching pending counts:', error)
+  }
+}
+
+
 </script>
 
 <style scoped>

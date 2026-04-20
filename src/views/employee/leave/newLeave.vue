@@ -86,6 +86,16 @@
       </div>
 
       <div class="pa-6">
+        <v-alert
+        v-if="errorMessage"
+        type="error"
+        variant="tonal"
+        class="mb-4"
+        closable
+        @click:close="errorMessage = ''"
+      >
+        {{ errorMessage }}
+      </v-alert>
         <div class="text-overline text-medium-emphasis mb-4">Leave Details</div>
         <v-form ref="leaveForm" v-model="isFormValid">
           <v-row>
@@ -215,9 +225,17 @@ interface Credit {
   remaining: number
 }
 
+interface LeaveData {
+  leave_cd: string
+  leave_dt: string
+  reason: string
+  no_hrs: number
+  with_pay: string
+}
+
 const props = defineProps<{
   forYear: string | number
-  editData: any | null
+  editData: LeaveData | null
   isView: boolean | null
 }>()
 
@@ -227,15 +245,15 @@ const isEditMode = computed(() => !!props.editData)
 const authStore = useAuthStore()
 
 const isFormValid = ref(false)
-const leaveForm = ref<any>(null) // Ref to the v-form for manual validation
+const leaveForm = ref<HTMLFormElement | null>(null) // Ref to the v-form for manual validation
 const leaveTypes = ref<leaveType[]>([])
 const credit = ref<Credit>({
   credits: 0,
   used: 0,
   remaining: 0,
 })
+const errorMessage = ref('')
 const emit = defineEmits(['close', 'saved'])
-const isView = ref(false)
 
 // Reactive form data payload
 const formData = reactive<NewLeaveForm>({
@@ -268,9 +286,6 @@ onMounted(async () => {
       formData.hours = props.editData.no_hrs
       formData.withPay = props.editData.with_pay === '1'
       await setCredit(formData.kindOfLeave ?? '')
-    }
-    if (props.isView) {
-      isView.value = true
     }
   } catch (error) {
     console.log(error)
@@ -323,7 +338,7 @@ const setCredit = async (leaveType: string) => {
 const loadEmployee = async () => {
   try {
     employeeContext.empNo = authStore.employee?.employeeNo ?? ''
-    employeeContext.fullname = `${authStore.employee?.lastName ?? ''}, 
+    employeeContext.fullname = `${authStore.employee?.lastName ?? ''},
     ${authStore.employee?.firstName ?? ''}`
     employeeContext.dateHired = formatToMMDDYYYY(authStore.employee?.dateHired ?? '')
     const monthsEmployed = calculateMonthsEmployed(employeeContext.dateHired)
@@ -340,8 +355,8 @@ const loadLeaveTypes = async () => {
     const rawData = response.data.data
     const allowedCodes = ['VAC', 'SIC']
     leaveTypes.value = rawData
-      .filter((item: any) => allowedCodes.includes(item.leave_cd))
-      .map((item: any) => {
+      .filter((item: { leave_cd: string , pay_desc: string }) => allowedCodes.includes(item.leave_cd))
+      .map((item: { leave_cd: string , pay_desc: string }) => {
         return {
           // Assuming your DB returns 'description' and 'leave_cd'
           title: `${item.pay_desc} (${item.leave_cd})`,
@@ -352,16 +367,6 @@ const loadLeaveTypes = async () => {
     console.log(error)
   }
 }
-
-// System info that was awkwardly placed in the old UI
-const systemInfo = reactive({
-  encodeDate: new Date().toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }),
-  payrollCutoff: '03/10/2026', // You'd fetch this from your backend logic
-})
 
 const formatForTimeInput = (rawTime: string | null) => {
   if (!rawTime) return ''
@@ -418,14 +423,37 @@ const handleCancel = () => {
   // Reset form or emit close event to parent dialog
   formData.leaveDate = ''
   formData.reason = ''
+  errorMessage.value = ''
   emit('close')
 }
 
 const handleSave = async () => {
-  const { valid } = await leaveForm.value.validate()
+  const { valid } = await leaveForm.value?.validate() ?? { valid: false }
+  errorMessage.value = ''
+  const dateFrom = authStore.payrollInit?.pay_fr ?? ''
+  const dateTo = authStore.payrollInit?.pay_to ?? ''
+  if (formData.leaveDate < dateFrom || formData.leaveDate > dateTo) {
+    errorMessage.value = `Validation Failed: Leave date must be between ${formatDate(dateFrom)} and ${formatDate(dateTo)}}.`
+    return
+  }
   if (valid) {
+    errorMessage.value = ''
     emit('saved', formData)
   }
+}
+
+
+const formatDate = (dateString: string) => {
+  if (!dateString) return ''
+
+  const date = new Date(dateString)
+
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long', // "Monday"
+    year: 'numeric', // "2026"
+    month: 'short', // "Mar"
+    day: 'numeric', // "11"
+  })
 }
 
 const calculateTotalHours = (timeIn: string, timeOut: string): number => {

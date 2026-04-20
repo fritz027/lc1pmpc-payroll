@@ -22,6 +22,7 @@
               :items-per-page="-1"
               hover
               class="dense-table"
+              :loading="isLoading"
             >
               <template v-slot:item="{ item, index }">
                 <tr
@@ -62,7 +63,7 @@
         >
           <div v-if="selectedEmployee" class="pa-3 bg-white border-b d-flex align-center">
             <div>
-              <div class="text-caption text-grey">Employee Attendance Applications</div>
+              <div class="text-caption text-grey">Employee Leave Applications</div>
               <div class="text-subtitle-1 font-weight-bold">{{ selectedEmployee.fullName }}</div>
             </div>
 
@@ -70,22 +71,22 @@
 
             <v-fade-transition>
               <v-btn
-                v-if="selectedAttendance.length > 0"
+                v-if="selectedLeaves.length > 0"
                 color="success"
                 prepend-icon="mdi-check-all"
                 elevation="1"
                 rounded="pill"
-                @click="approveBulkAttendance"
+                @click="approveBulkLeaves"
               >
-                Approve Selected ({{ selectedAttendance.length }})
+                Approve Selected ({{ selectedLeaves.length }})
               </v-btn>
             </v-fade-transition>
           </div>
 
           <div class="flex-grow-1 overflow-auto custom-scrollbar pa-2">
             <v-data-table
-              :headers="attendanceHeaders"
-              :items="attendanceData"
+              :headers="leaveHeaders"
+              :items="leaveData"
               density="compact"
               hide-default-footer
               class="dense-table text-no-wrap border rounded-0"
@@ -101,33 +102,21 @@
                 </div>
               </template>
 
-              <template v-slot:item.date_dt="{ item }">
-                <span class="font-weight-medium">{{ formatDate(item.date_dt) }}</span>
+              <template v-slot:[`item.leave_dt`]="{ item }">
+                <span class="font-weight-medium">{{ formatDate(item.leave_dt) }}</span>
               </template>
-              <template v-slot:item.time_in="{ item }">
-                <span class="font-weight-medium">{{ formatTime(item.time_in) }}</span>
-              </template>
-              <template v-slot:item.time_out="{ item }">
-                <span class="font-weight-medium">{{ formatTime(item.time_out) }}</span>
-              </template>
-              <template v-slot:item.status="{ item }">
+
+              <template v-slot:[`item.status`]="{ item }">
                 <v-chip
-                  :color="getStatusColor(item.is_approved)"
+                  :color="getStatusColor(item.apprvd)"
                   size="x-small"
                   label
                   class="font-weight-bold"
                 >
-                  {{
-                    item.is_approved === '1' || item.is_approved === 'Y' || item.is_approved === 1
-                      ? 'Approved'
-                      : 'Pending'
-                  }}
+                  {{ item.apprvd === '1' || item.apprvd === 'Y' ? 'Approved' : 'Pending' }}
                 </v-chip>
               </template>
-              <template v-slot:item.requested_date="{ item }">
-                <span class="font-weight-medium">{{ formatDate(item.requested_date) }}</span>
-              </template>
-              <template v-slot:item.actions="{ item }">
+              <template v-slot:[`item.actions`]="{ item }">
                 <div class="d-flex justify-center align-center w-100">
                   <v-tooltip
                     :text="
@@ -137,9 +126,7 @@
                   >
                     <template v-slot:activator="{ props }">
                       <div
-                        v-if="
-                          !item.is_approved || item.is_approved === '0' || item.is_approved === 0
-                        "
+                        v-if="item.apprvd !== '0'"
                         v-bind="props"
                         class="action-checkbox-wrapper"
                       >
@@ -218,34 +205,36 @@ interface Employee {
   fullName: string
 }
 
-interface AttendanceApplication {
+interface LeaveApplication {
+  apply_on: string
+  as_fullname: string
+  comp_apply_on: string
+  confidential: string
+  date_posted: string | null
   emp_no: string
-  shift_code: string
-  date_dt: string
-  time_in: string
-  time_out: string
-  date_posted: string
-  init_cd: string
-  phalf: string
+  apprvd: string
+  for_year: number
+  init_cd: string | null
+  leave_cd: string
+  leave_dt: string
+  no_hrs: number
+  phalf: string | null
+  with_pay: string
   reason: string
-  status: string
-  requested_date: string
-  approver_emp_no: string
-  action__date: string
-  is_approved: string | null | number
 }
 
 // --- State ---
 const authStore = useAuthStore()
 const searchQuery = ref('')
 const selectedEmployee = ref<Employee | null>(null)
-const attendanceData = ref<AttendanceApplication[]>([])
+const leaveData = ref<LeaveApplication[]>([])
 const employees = ref<Employee[]>([])
-const selectedAttendance = ref<AttendanceApplication[]>([])
+const selectedLeaves = ref<LeaveApplication[]>([])
 const snackbar = ref(false)
 const snackbarMessage = ref('')
 const snackbarColor = ref('success')
 const isProcessing = ref(false)
+const isLoading = ref(false)
 
 // --- Headers ---
 const employeeHeaders = [
@@ -253,14 +242,13 @@ const employeeHeaders = [
   { title: 'Employee Name', key: 'fullName', align: 'start', sortable: true, width: '70%' },
 ]
 
-const attendanceHeaders = [
-  { title: 'Attendace Date', key: 'date_dt' },
-  { title: 'Shift Code', key: 'shift_code' },
-  { title: 'Time In', key: 'time_in' },
-  { title: 'Time Out', key: 'time_out' },
+const leaveHeaders = [
+  { title: 'Leave Type', key: 'leave_cd' },
+  { title: 'Leave Date', key: 'leave_dt' },
+  { title: 'Hours', key: 'no_hrs' },
+  { title: 'With Pay', key: 'with_pay', align: 'center' },
   { title: 'Reason', key: 'reason' },
   { title: 'Status', key: 'status', align: 'center' },
-  { title: 'Req. Date', key: 'requested_date' },
   { title: 'Actions', key: 'actions', sortable: false, align: 'center' },
 ]
 
@@ -281,33 +269,34 @@ const getStatusColor = (datePosted: string | null) => {
   return isApproved(datePosted) ? 'success' : 'warning'
 }
 
-const doneApproved = (approve: string) => {
-  if (approve === '1' || approve === 'Y') return 'success'
-  return 'warning'
-}
+// const doneApproved = (approve: string) => {
+//   if (approve === '1' || approve === 'Y') return 'success'
+//   return 'warning'
+// }
 
 const selectEmployee = async (employee: Employee) => {
   try {
+    isLoading.value = true
     if (!employee) return
 
     // Immediately set selected employee and wipe old data to prevent ghosts
     selectedEmployee.value = employee
-    attendanceData.value = []
+    leaveData.value = []
 
     const dFrom = formatDateOnly(authStore.payrollInit?.pay_fr ?? '')
     const dto = formatDateOnly(authStore.payrollInit?.pay_to ?? '')
 
-    const res = await Api.EmployeeAttendanceRequest(
+    const res = await Api.FetchEmployeeLeaveByApprover(
       employee.emp_no,
       dFrom,
       dto,
       authStore.accessToken,
     )
 
-    const data = res.data.attendance
+    const data = res.data.leave
 
     if (data && data.length > 0) {
-      attendanceData.value = data
+      leaveData.value = data
     }
 
     // Auto-scroll logic for Mobile devices
@@ -321,6 +310,8 @@ const selectEmployee = async (employee: Employee) => {
     }
   } catch (error) {
     console.log(error)
+  }finally {
+    isLoading.value = false
   }
 }
 
@@ -328,12 +319,7 @@ const loadEmployees = async () => {
   try {
     const dFrom = formatDateOnly(authStore.payrollInit?.pay_fr ?? '')
     const dto = formatDateOnly(authStore.payrollInit?.pay_to ?? '')
-    const response = await Api.FetchEmployeeByApprover(
-      authStore.accessToken,
-      'attendance',
-      dFrom,
-      dto,
-    )
+    const response = await Api.FetchEmployeeByApprover(authStore.accessToken, 'leave', dFrom, dto)
     employees.value = response.data.employees
   } catch (error) {
     console.log(error)
@@ -364,56 +350,54 @@ const formatDate = (dateString: string) => {
   })
 }
 
-const checkWithPay = (val: string | null | undefined): boolean => {
-  if (!val) return false
+// const checkWithPay = (val: string | null | undefined): boolean => {
+//   if (!val) return false
+//   const normalized = val.toString().trim().toUpperCase()
+//   return normalized === 'Y' || normalized === '1' || normalized === 'TRUE'
+// }
 
-  const normalized = val.toString().trim().toUpperCase()
-  return normalized === 'Y' || normalized === '1' || normalized === 'TRUE'
-}
-
-const isSelected = (attendance: AttendanceApplication) => {
-  return selectedAttendance.value.some(
-    (item) => item.date_dt === attendance.date_dt && item.emp_no === attendance.emp_no,
+const isSelected = (leave: LeaveApplication) => {
+  return selectedLeaves.value.some(
+    (item) => item.leave_dt === leave.leave_dt && item.emp_no === leave.emp_no,
   )
 }
 
-const toggleSelection = async (attendance: AttendanceApplication) => {
-  const index = selectedAttendance.value.findIndex(
-    (item) => item.date_dt === attendance.date_dt && item.emp_no === attendance.emp_no,
+const toggleSelection = async (leave: LeaveApplication) => {
+  const index = selectedLeaves.value.findIndex(
+    (item) => item.leave_dt === leave.leave_dt && item.emp_no === leave.emp_no,
   )
   if (index > -1) {
-    selectedAttendance.value.splice(index, 1)
+    selectedLeaves.value.splice(index, 1)
   } else {
-    selectedAttendance.value.push(attendance)
+    selectedLeaves.value.push(leave)
   }
 }
 
-const rejectLeave = async (attendance: AttendanceApplication) => {
-  try {
-    console.log('Reject clicked for:', attendance)
-    // Add your reject logic/API call here
-  } catch (error) {
-    console.log(error)
-  }
-}
+// const rejectLeave = async (leave: LeaveApplication) => {
+//   try {
+//     console.log('Reject clicked for:', leave)
+//     // Add your reject logic/API call here
+//   } catch (error) {
+//     console.log(error)
+//   }
+// }
 
-const approveBulkAttendance = async () => {
-  if (selectedAttendance.value.length === 0) return
+const approveBulkLeaves = async () => {
+  if (selectedLeaves.value.length === 0) return
   isProcessing.value = true
-  const dToday = formatDateOnly(new Date().toISOString())
 
   try {
-    const payload = selectedAttendance.value.map((attendance) => ({
-      emp_no: attendance.emp_no,
-      date_dt: formatDateOnly(attendance.date_dt),
-      status: 'APPROVED',
-      action_date: dToday,
+    const payload = selectedLeaves.value.map((leave) => ({
+      emp_no: leave.emp_no,
+      leave_dt: leave.leave_dt,
+      for_year: leave.for_year,
+      leave_cd: leave.leave_cd,
     }))
 
-    const res = await Api.BulkApproveAttendance(authStore.accessToken, payload)
+    const res = await Api.BulkApproveLeave(authStore.accessToken, payload)
 
     if (res.data.success) {
-      snackbarMessage.value = `Successfully approved ${selectedAttendance.value.length} applications.`
+      snackbarMessage.value = `Successfully approved ${selectedLeaves.value.length} applications.`
       snackbarColor.value = 'success'
       snackbar.value = true
 
@@ -423,7 +407,7 @@ const approveBulkAttendance = async () => {
       }
 
       // Clear selection
-      selectedAttendance.value = []
+      selectedLeaves.value = []
     }
   } catch (error) {
     console.error('Bulk Approval Error:', error)
@@ -433,15 +417,6 @@ const approveBulkAttendance = async () => {
   } finally {
     isProcessing.value = false
   }
-}
-
-const formatTime = (timeString: string | null) => {
-  if (!timeString) return '-'
-  return new Date(timeString).toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true, // Changes output to 24-hour format (e.g., "17:45")
-  })
 }
 
 onMounted(async () => {
@@ -458,6 +433,8 @@ watch(
     // Only trigger if we actually have a selected employee and valid payroll dates
     if (selectedEmployee.value && newVal) {
       selectEmployee(selectedEmployee.value)
+    } else {
+      loadEmployees() // Refresh employee list if payrollInit changes and no employee is selected
     }
   },
   { immediate: true },

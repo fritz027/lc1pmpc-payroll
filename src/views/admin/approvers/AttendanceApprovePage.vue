@@ -1,4 +1,5 @@
 <template>
+  <!-- AttendanceApprovals Component -->
   <v-container fluid class="pa-0 h-100 bg-grey-lighten-4">
     <v-card
       class="h-100 rounded-0 d-flex flex-column"
@@ -62,7 +63,7 @@
         >
           <div v-if="selectedEmployee" class="pa-3 bg-white border-b d-flex align-center">
             <div>
-              <div class="text-caption text-grey">Employee Change Day Off Applications</div>
+              <div class="text-caption text-grey">Employee Attendance Applications</div>
               <div class="text-subtitle-1 font-weight-bold">{{ selectedEmployee.fullName }}</div>
             </div>
 
@@ -70,26 +71,27 @@
 
             <v-fade-transition>
               <v-btn
-                v-if="selectedChangeDayOff.length > 0"
+                v-if="selectedAttendance.length > 0"
                 color="success"
                 prepend-icon="mdi-check-all"
                 elevation="1"
                 rounded="pill"
-                @click="approveBulkChangeDayOff"
+                @click="approveBulkAttendance"
               >
-                Approve Selected ({{ selectedChangeDayOff.length }})
+                Approve Selected ({{ selectedAttendance.length }})
               </v-btn>
             </v-fade-transition>
           </div>
 
           <div class="flex-grow-1 overflow-auto custom-scrollbar pa-2">
             <v-data-table
-              :headers="changeDayOffHeaders"
-              :items="changeDayOffData"
+              :headers="attendanceHeaders"
+              :items="attendanceData"
               density="compact"
               hide-default-footer
               class="dense-table text-no-wrap border rounded-0"
               hover
+              :loading="isLoading"
             >
               <template v-slot:no-data>
                 <div class="pa-4 text-grey text-caption text-center">
@@ -101,51 +103,59 @@
                 </div>
               </template>
 
-              <template v-slot:item.ot_date="{ item }">
-                <span class="font-weight-medium">{{ formatDate(item.ot_date) }}</span>
+              <template v-slot:[`item.attendance_date`]="{ item }">
+                <span class="font-weight-medium">{{ formatDate(item.attendance_date) }}</span>
               </template>
-              <template v-slot:item.time_from="{ item }">
-                <span class="font-weight-medium">{{ formatTime(item.time_from) }}</span>
+              <template v-slot:[`item.shift_code`]="{ item }">
+                <span class="font-weight-medium">{{ item.shift_code || '-' }}</span>
               </template>
-              <template v-slot:item.time_to="{ item }">
-                <span class="font-weight-medium">{{ formatTime(item.time_to) }}</span>
+              <template v-slot:[`item.actual_time_in`]="{ item }">
+                <span class="font-weight-medium">{{ formatTime(item.actual_time_in) }}</span>
               </template>
-              <template v-slot:item.hours="{ item }">
-                <span class="font-weight-medium">{{ item.hours ?? '-' }}</span>
+              <template v-slot:[`item.actual_time_out`]="{ item }">
+                <span class="font-weight-medium">{{ formatTime(item.actual_time_out) }}</span>
               </template>
-              <template v-slot:item.charge_to_date="{ item }">
-                <span class="font-weight-medium">{{ formatDate(item.charge_to_date) }}</span>
+              <template v-slot:[`item.requested_time_in`]="{ item }">
+                <span class="font-weight-medium">{{ formatTime(item.requested_time_in) }}</span>
               </template>
-
-              <template v-slot:item.status="{ item }">
+              <template v-slot:[`item.requested_time_out`]="{ item }">
+                <span class="font-weight-medium">{{ formatTime(item.requested_time_out) }}</span>
+              </template>
+              <template v-slot:[`item.reason`]="{ item }">
+                <span class="font-weight-medium">{{ item.reason || '-' }}</span>
+              </template>
+              <template v-slot:[`item.requested_date`]="{ item }">
+                <span class="font-weight-medium">{{ formatDate(item.requested_date) }}</span>
+              </template>
+              <template v-slot:[`item.request_status`]="{ item }">
                 <v-chip
-                  :color="getStatusColor(item.status)"
+                  :color="getStatusColorNew(item.request_status)"
                   size="x-small"
                   label
                   class="font-weight-bold"
                 >
-                  {{
-                    item.status === 'A' ? 'Approved' : item.status === 'R' ? 'Rejected' : 'Pending'
-                  }}
+                  {{ item.request_status || 'PENDING' }}
                 </v-chip>
               </template>
-              <template v-slot:item.actions="{ item }">
+              <template v-slot:[`item.actions`]="{ item }">
                 <div class="d-flex justify-center align-center w-100">
                   <v-tooltip
-                    :text="isApproved(item.status) ? 'Already Approved' : 'Select for Approval'"
+                    :text="
+                      isApproved(item.date_posted) ? 'Already Approved' : 'Select for Approval'
+                    "
                     location="top"
                   >
                     <template v-slot:activator="{ props }">
                       <div
-                        v-if="item.status === 'P'"
+                        v-if=" item.request_status !== 'APPROVED' && !isApproved(item.date_posted)"
                         v-bind="props"
                         class="action-checkbox-wrapper"
                       >
                         <v-checkbox-btn
-                          :model-value="isApproved(item.status) || isSelected(item)"
-                          :readonly="isApproved(item.status)"
-                          :color="isApproved(item.status) ? 'success' : 'primary'"
-                          :icon="isApproved(item.status) ? 'mdi-check-circle' : undefined"
+                          :model-value="isApproved(item.date_posted) || isSelected(item)"
+                          :readonly="isApproved(item.date_posted)"
+                          :color="isApproved(item.date_posted) ? 'success' : 'primary'"
+                          :icon="isApproved(item.date_posted) ? 'mdi-check-circle' : undefined"
                           density="compact"
                           class="centered-checkbox"
                           @change="toggleSelection(item)"
@@ -206,7 +216,6 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import { useAuthStore } from '@/stores/auth'
 import Api from '@/Api/Admin'
-import { it } from 'vuetify/locale'
 
 // Initialize display helpers for mobile responsiveness
 const { mobile } = useDisplay()
@@ -217,27 +226,33 @@ interface Employee {
   fullName: string
 }
 
-interface ChangeDayOffApplication {
+interface AttendanceApplication {
   emp_no: string
-  status: 'P' | 'A' | 'R' | 'C' | string
-  ot_date: string | null
-  time_from: string | null
-  time_to: string | null
-  hours: number | null
-  charge_to_date: string | null
+  attendance_date: string
+  shift_code: string
+  actual_time_in: string | Date | null
+  actual_time_out: string | Date | null
+  requested_time_in: string | Date | null
+  requested_time_out: string | Date | null
+  reason: string
+  request_status: string | null
+  requested_date: string | Date | null
+  date_posted: string | null
 }
 
 // --- State ---
 const authStore = useAuthStore()
 const searchQuery = ref('')
 const selectedEmployee = ref<Employee | null>(null)
-const changeDayOffData = ref<ChangeDayOffApplication[]>([])
+const attendanceData = ref<AttendanceApplication[]>([])
 const employees = ref<Employee[]>([])
-const selectedChangeDayOff = ref<ChangeDayOffApplication[]>([])
+const selectedAttendance = ref<AttendanceApplication[]>([])
 const snackbar = ref(false)
 const snackbarMessage = ref('')
 const snackbarColor = ref('success')
 const isProcessing = ref(false)
+const isLoading = ref(false)
+
 
 // --- Headers ---
 const employeeHeaders = [
@@ -245,14 +260,16 @@ const employeeHeaders = [
   { title: 'Employee Name', key: 'fullName', align: 'start', sortable: true, width: '70%' },
 ]
 
-const changeDayOffHeaders = [
-  { title: 'Attendance Date', key: 'ot_date' },
-  { title: 'Time From', key: 'time_from', align: 'center' },
-  { title: 'Time To', key: 'time_to', align: 'center' },
-  { title: 'Hours', key: 'hours', align: 'center' },
-  { title: 'Charge To Date', key: 'charge_to_date', align: 'center' },
-  { title: 'To Shift Type', key: 'to_shift_type', align: 'center' },
-  { title: 'Status', key: 'status', align: 'center' },
+const attendanceHeaders = [
+  { title: 'Attendance Date', key: 'attendance_date' },
+  { title: 'Shift Code', key: 'shift_code' },
+  { title: 'Actual Time In', key: 'actual_time_in' },
+  { title: 'Actual Time Out', key: 'actual_time_out' },
+  { title: 'Requested Time In', key: 'requested_time_in' },
+  { title: 'Requested Time Out', key: 'requested_time_out' },
+  { title: 'Reason', key: 'reason' },
+  { title: 'Requested Date', key: 'requested_date' },
+  { title: 'Status', key: 'request_status', align: 'center' },
   { title: 'Actions', key: 'actions', sortable: false, align: 'center' },
 ]
 
@@ -265,66 +282,51 @@ const filteredEmployees = computed(() => {
   )
 })
 
-const getShiftType = (shiftType: string | null) => {
-  if (!shiftType) return '-'
-  const mapping: Record<string, string> = {
-    G: 'Dayoff/Regular',
-    N: 'Normal',
-    P: 'Dayoff/Special',
-    // Add more mappings as needed
+const isApproved = (datePosted: string | null) => {
+  return datePosted !== null && datePosted !== '00/00/0000'
+}
+
+const getStatusColorNew = (isApproved: string | null | number) => {
+  switch (isApproved) {
+    case 'APPROVED':
+      return 'success'
+    case 'REJECTED':
+      return 'error'
+    default:
+      return 'warning'
   }
-  return mapping[shiftType] || shiftType
 }
 
-const getShiftTypeColor = (shiftType: string | null) => {
-  if (!shiftType) return 'grey'
-  const mapping: Record<string, string> = {
-    G: 'orange',
-    N: 'blue',
-    P: 'red',
-    // Add more mappings as needed
-  }
-  return mapping[shiftType] || 'grey'
-}
-
-const isApproved = (status: string | null) => {
-  return status === 'A'
-}
-
-const getStatusColor = (status: string | null) => {
-  if (!status) return 'grey'
-  const mapping: Record<string, string> = {
-    A: 'success',
-    R: 'error',
-    C: 'warning',
-    // Add more mappings as needed
-  }
-  return mapping[status] || 'orange'
-}
-
-const doneApproved = (approve: string) => {
-  if (approve === '1' || approve === 'Y') return 'success'
-  return 'warning'
-}
+// const doneApproved = (approve: string) => {
+//   if (approve === '1' || approve === 'Y') return 'success'
+//   return 'warning'
+// }
 
 const selectEmployee = async (employee: Employee) => {
   try {
+    isLoading.value = true
     if (!employee) return
 
     // Immediately set selected employee and wipe old data to prevent ghosts
     selectedEmployee.value = employee
-    changeDayOffData.value = []
+    attendanceData.value = []
 
     const dFrom = formatDateOnly(authStore.payrollInit?.pay_fr ?? '')
     const dto = formatDateOnly(authStore.payrollInit?.pay_to ?? '')
 
-    const res = await Api.EmployeeChangeDayOffRequest(employee.emp_no, authStore.accessToken)
+    const res = await Api.EmployeeAttendanceRequest(
+      employee.emp_no,
+      dFrom,
+      dto,
+      authStore.accessToken,
+    )
 
-    const data = res.data.dayOffs
-
+    const data = res.data.attendance
+    console.log('Fetched attendance data for', employee.fullName, data)
     if (data && data.length > 0) {
-      changeDayOffData.value = data
+      attendanceData.value = data
     }
+
 
     // Auto-scroll logic for Mobile devices
     if (mobile.value) {
@@ -337,6 +339,8 @@ const selectEmployee = async (employee: Employee) => {
     }
   } catch (error) {
     console.log(error)
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -346,7 +350,7 @@ const loadEmployees = async () => {
     const dto = formatDateOnly(authStore.payrollInit?.pay_to ?? '')
     const response = await Api.FetchEmployeeByApprover(
       authStore.accessToken,
-      'changeOff',
+      'attendance',
       dFrom,
       dto,
     )
@@ -380,55 +384,56 @@ const formatDate = (dateString: string) => {
   })
 }
 
-const checkWithPay = (val: string | null | undefined): boolean => {
-  if (!val) return false
+// const checkWithPay = (val: string | null | undefined): boolean => {
+//   if (!val) return false
 
-  const normalized = val.toString().trim().toUpperCase()
-  return normalized === 'Y' || normalized === '1' || normalized === 'TRUE'
-}
+//   const normalized = val.toString().trim().toUpperCase()
+//   return normalized === 'Y' || normalized === '1' || normalized === 'TRUE'
+// }
 
-const isSelected = (changeDayOff: ChangeDayOffApplication) => {
-  return selectedChangeDayOff.value.some(
-    (item) => item.ot_date === changeDayOff.ot_date && item.emp_no === changeDayOff.emp_no,
+const isSelected = (attendance: AttendanceApplication) => {
+  return selectedAttendance.value.some(
+    (item) => item.attendance_date === attendance.attendance_date && item.emp_no === attendance.emp_no,
   )
 }
 
-const toggleSelection = async (changeDayOff: ChangeDayOffApplication) => {
-  const index = selectedChangeDayOff.value.findIndex(
-    (item) => item.ot_date === changeDayOff.ot_date && item.emp_no === changeDayOff.emp_no,
+const toggleSelection = async (attendance: AttendanceApplication) => {
+  const index = selectedAttendance.value.findIndex(
+    (item) => item.attendance_date === attendance.attendance_date && item.emp_no === attendance.emp_no,
   )
   if (index > -1) {
-    selectedChangeDayOff.value.splice(index, 1)
+    selectedAttendance.value.splice(index, 1)
   } else {
-    selectedChangeDayOff.value.push(changeDayOff)
+    selectedAttendance.value.push(attendance)
   }
 }
 
-const rejectLeave = async (changeDayOff: ChangeDayOffApplication) => {
-  try {
-    console.log('Reject clicked for:', changeDayOff)
-    // Add your reject logic/API call here
-  } catch (error) {
-    console.log(error)
-  }
-}
+// const rejectLeave = async (attendance: AttendanceApplication) => {
+//   try {
+//     console.log('Reject clicked for:', attendance)
+//     // Add your reject logic/API call here
+//   } catch (error) {
+//     console.log(error)
+//   }
+// }
 
-const approveBulkChangeDayOff = async () => {
-  if (selectedChangeDayOff.value.length === 0) return
+const approveBulkAttendance = async () => {
+  if (selectedAttendance.value.length === 0) return
   isProcessing.value = true
   const dToday = formatDateOnly(new Date().toISOString())
 
   try {
-    const payload = selectedChangeDayOff.value.map((changeDayOff) => ({
-      emp_no: changeDayOff.emp_no,
-      ot_date: changeDayOff.ot_date,
-      status: 'A',
+    const payload = selectedAttendance.value.map((attendance) => ({
+      emp_no: attendance.emp_no,
+      date_dt: formatDateOnly(attendance.attendance_date),
+      status: 'APPROVED',
       action_date: dToday,
     }))
-    const res = await Api.BulkApproveChangeDayOff(authStore.accessToken, payload)
+
+    const res = await Api.BulkApproveAttendance(authStore.accessToken, payload)
 
     if (res.data.success) {
-      snackbarMessage.value = `Successfully approved ${selectedChangeDayOff.value.length} applications.`
+      snackbarMessage.value = `Successfully approved ${selectedAttendance.value.length} applications.`
       snackbarColor.value = 'success'
       snackbar.value = true
 
@@ -438,7 +443,7 @@ const approveBulkChangeDayOff = async () => {
       }
 
       // Clear selection
-      selectedChangeDayOff.value = []
+      selectedAttendance.value = []
     }
   } catch (error) {
     console.error('Bulk Approval Error:', error)
@@ -457,17 +462,6 @@ const formatTime = (timeString: string | null) => {
     minute: '2-digit',
     hour12: true, // Changes output to 24-hour format (e.g., "17:45")
   })
-}
-
-const formatWithTime = (date: Date): string => {
-  return new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true, // This forces AM/PM
-  }).format(date)
 }
 
 onMounted(async () => {

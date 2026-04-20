@@ -11,7 +11,7 @@
       </v-row>
 
       <v-row>
-        <v-col cols="12" md="4">
+        <v-col cols="12" md="5">
           <v-select
             v-model="selectedApprover"
             :items="approvers"
@@ -21,10 +21,11 @@
             prepend-inner-icon="mdi-account-tie"
             variant="outlined"
             color="primary"
+            return-object
           ></v-select>
         </v-col>
-        <v-col cols="12" md="4">
-          <v-select
+        <v-col cols="12" md="2">
+          <!-- <v-select
             v-model="selectedDept"
             :items="departments"
             item-title="description"
@@ -32,16 +33,16 @@
             label="Select Department"
             prepend-inner-icon="mdi-office-building"
             variant="outlined"
-          ></v-select>
+          ></v-select> -->
         </v-col>
-        <v-col cols="12" md="4">
+        <v-col cols="12" md="5">
           <v-select
-            v-model="selectedDivision"
-            :items="divisions"
-            item-title="description"
-            item-value="div_code"
-            label="Select Division"
-            prepend-inner-icon="mdi-domain"
+            v-model="selectedCompany"
+            :items="companies"
+            item-title="company_name"
+            item-value="company_code"
+            label="Select Company"
+            prepend-inner-icon="mdi-office-building"
             variant="outlined"
             return-object
           ></v-select>
@@ -69,7 +70,7 @@
           class="striped-table"
           hover
         >
-          <template v-slot:header.canApproveLeave>
+          <template v-slot:[`header.canApproveLeave`]>
             <div class="d-flex align-center justify-center">
               <v-checkbox
                 v-model="selectAllLeave"
@@ -82,7 +83,7 @@
             </div>
           </template>
 
-          <template v-slot:header.canApproveOT>
+          <template v-slot:[`header.canApproveOT`]>
             <div class="d-flex align-center justify-center">
               <v-checkbox
                 v-model="selectAllOT"
@@ -95,7 +96,7 @@
             </div>
           </template>
 
-          <template v-slot:header.canApproveAttendance>
+          <template v-slot:[`header.canApproveAttendance`]>
             <div class="d-flex align-center justify-center">
               <v-checkbox
                 v-model="selectAllAttendance"
@@ -108,7 +109,7 @@
             </div>
           </template>
 
-          <template v-slot:header.canApproveTravelOrder>
+          <template v-slot:[`header.canApproveTravelOrder`]>
             <div class="d-flex align-center justify-center">
               <v-checkbox
                 v-model="selectAllTravelOrder"
@@ -120,7 +121,7 @@
               Travel Order Approval
             </div>
           </template>
-          <template v-slot:header.canApproveChangeOff>
+          <template v-slot:[`header.canApproveChangeOff`]>
             <div class="d-flex align-center justify-center">
               <v-checkbox
                 v-model="selectAllChangeOff"
@@ -133,7 +134,7 @@
             </div>
           </template>
 
-          <template v-slot:item.fullName="{ item }">
+          <template v-slot:[`item.fullName`]="{ item }">
             <div class="py-2">
               <div class="font-weight-bold">{{ item.fullName }}</div>
               <div class="text-caption text-medium-emphasis">
@@ -142,7 +143,7 @@
             </div>
           </template>
 
-          <template v-slot:item.canApproveLeave="{ item }">
+          <template v-slot:[`item.canApproveLeave`]="{ item }">
             <div class="d-flex justify-center align-center w-100">
               <v-switch
                 v-model="item.canApproveLeave"
@@ -161,7 +162,7 @@
             </div>
           </template>
 
-          <template v-slot:item.canApproveOT="{ item }">
+          <template v-slot:[`item.canApproveOT`]="{ item }">
             <div class="d-flex justify-center align-center w-100">
               <v-switch
                 v-model="item.canApproveOT"
@@ -179,7 +180,7 @@
               </v-switch>
             </div>
           </template>
-          <template v-slot:item.canApproveAttendance="{ item }">
+          <template v-slot:[`item.canApproveAttendance`]="{ item }">
             <div class="d-flex justify-center align-center w-100">
               <v-switch
                 v-model="item.canApproveAttendance"
@@ -201,7 +202,7 @@
               </v-switch>
             </div>
           </template>
-          <template v-slot:item.canApproveTravelOrder="{ item }">
+          <template v-slot:[`item.canApproveTravelOrder`]="{ item }">
             <div class="d-flex justify-center align-center w-100">
               <v-switch
                 v-model="item.canApproveTravelOrder"
@@ -222,7 +223,7 @@
             </div>
           </template>
 
-          <template v-slot:item.canApproveChangeOff="{ item }">
+          <template v-slot:[`item.canApproveChangeOff`]="{ item }">
             <div class="d-flex justify-center align-center w-100">
               <v-switch
                 v-model="item.canApproveChangeOff"
@@ -250,14 +251,13 @@
 import { ref, watch, onMounted, computed } from 'vue'
 import authApi from '@/Api/Admin'
 import { useAuthStore } from '@/stores/auth'
-import { ca, de } from 'vuetify/locale'
-import { all } from 'axios'
 
 // Interfaces
 interface Employee {
   emp_no: string
   fullName: string
   position: string
+  company_code: string
   canApproveLeave: boolean
   canApproveOT: boolean
   canApproveAttendance: boolean
@@ -280,6 +280,11 @@ interface Division {
   description: string
 }
 
+interface Company{
+  company_code: string
+  company_name: string
+}
+
 const headers = [
   { title: 'Employee Details', key: 'fullName', width: '25%' },
   { title: 'Leave Approval', key: 'canApproveLeave', align: 'center' as const },
@@ -293,17 +298,20 @@ const authStore = useAuthStore()
 const approvers = ref<Approver[]>([])
 const departments = ref<Department[]>([])
 const divisions = ref<Division[]>([])
-const selectedApprover = ref(null)
-const selectedDept = ref(null)
+const selectedApprover = ref<Approver | null>(null)
+const selectedDept = ref<Department | null>(null)
 const selectedDivision = ref<Division | null>(null)
 const employees = ref<Employee[]>([])
 const isLoading = ref(false)
+const companies = ref<Company[]>([])
+const selectedCompany = ref<Company | null>(null)
 
 onMounted(async () => {
   try {
     isLoading.value = true
     await loadDeparments()
     await loadApprovers()
+    await loanCompanies()
   } catch (error) {
     console.error('Failed to fetch data', error)
   } finally {
@@ -326,6 +334,15 @@ const loadDeparments = async () => {
     departments.value = response.data.departments
   } catch (error) {
     console.error('Failed to fetch departments', error)
+  }
+}
+
+const loanCompanies = async () => {
+  try {
+    const response = await authApi.FetchCompanies(authStore.accessToken)
+    companies.value = response.data.companies
+  } catch (error) {
+    console.error('Failed to fetch companies', error)
   }
 }
 
@@ -359,7 +376,7 @@ watch(selectedDept, async (newDept) => {
   divisions.value = []
   employees.value = []
   if (newDept) {
-    await loadDivision(newDept)
+    await loadDivision(newDept.dept_code)
   }
 })
 
@@ -367,7 +384,20 @@ watch([selectedApprover, selectedDivision], async ([newApp, newDiv]) => {
   if (newApp && newDiv) {
     isLoading.value = true
     try {
-      await loadEmployees(newApp, newDiv.dept_code, newDiv.div_code)
+      await loadEmployees(newApp.emp_no, newDiv.dept_code, newDiv.div_code)
+    } finally {
+      isLoading.value = false
+    }
+  } else {
+    employees.value = []
+  }
+})
+
+watch([selectedCompany, selectedApprover], async ([newCompany, newApprover]) => {
+  if (newCompany && newApprover) {
+    isLoading.value = true
+    try {
+      await loadEmployeesByCompany(newCompany.company_code, newApprover.emp_no)
     } finally {
       isLoading.value = false
     }
@@ -395,16 +425,37 @@ const loadEmployees = async (approver: string, department: string, division: str
       division,
     )
 
-    employees.value = response.data.employees.map((emp: any) => ({
+    employees.value = response.data.employees.map((emp: Record<string, unknown>) => ({
       ...emp,
       canApproveLeave: !!emp.canApproveLeave, // or emp.canApproveLeave === 1
       canApproveOT: !!emp.canApproveOT, // or emp.canApproveOT === 1
       canApproveAttendance: !!emp.canApproveAttendance, // or emp.canApproveAttendance === 1
       canApproveTravelOrder: !!emp.canApproveTravelOrder, // or emp.canApproveTravelOrder === 1
       canApproveChangeOff: !!emp.canApproveChangeOff, // or emp.canApproveChageOff === 1
-    }))
+    })) as Employee[]
   } catch (error) {
     console.error('Failed to fetch employees', error)
+  }
+}
+
+const loadEmployeesByCompany = async (companyCode: string, empNo: string) => {
+  try {
+    const response = await authApi.FetchEmployeesByCompany(
+      authStore.accessToken,
+      companyCode,
+      empNo,
+    )
+
+    employees.value = response.data.employees.map((emp: Record<string, unknown>) => ({
+      ...emp,
+      canApproveLeave: !!emp.canApproveLeave, // or emp.canApproveLeave === 1
+      canApproveOT: !!emp.canApproveOT, // or emp.canApproveOT === 1
+      canApproveAttendance: !!emp.canApproveAttendance, // or emp.canApproveAttendance === 1
+      canApproveTravelOrder: !!emp.canApproveTravelOrder, // or emp.canApproveTravelOrder === 1
+      canApproveChangeOff: !!emp.canApproveChangeOff, // or emp.canApproveChageOff === 1
+    })) as Employee[]
+  } catch (error) {
+    console.error('Failed to fetch employees by company', error)
   }
 }
 
@@ -425,7 +476,7 @@ const saveAllAssignments = async () => {
     }))
 
     await authApi.SaveBulkApproverPermission(authStore.accessToken, {
-      approver_id: selectedApprover.value,
+      approver_id: selectedApprover.value?.emp_no,
       assignments: payload,
     })
 

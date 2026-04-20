@@ -22,6 +22,7 @@
               :items-per-page="-1"
               hover
               class="dense-table"
+              :loading="isLoading"
             >
               <template v-slot:item="{ item, index }">
                 <tr
@@ -62,7 +63,7 @@
         >
           <div v-if="selectedEmployee" class="pa-3 bg-white border-b d-flex align-center">
             <div>
-              <div class="text-caption text-grey">Employee Travel Order Applications</div>
+              <div class="text-caption text-grey">Employee Overtime Applications</div>
               <div class="text-subtitle-1 font-weight-bold">{{ selectedEmployee.fullName }}</div>
             </div>
 
@@ -70,22 +71,22 @@
 
             <v-fade-transition>
               <v-btn
-                v-if="selectedto.length > 0"
+                v-if="selectedOTs.length > 0"
                 color="success"
                 prepend-icon="mdi-check-all"
                 elevation="1"
                 rounded="pill"
-                @click="approveBulkTravelOrder"
+                @click="approveBulkOT"
               >
-                Approve Selected ({{ selectedto.length }})
+                Approve Selected ({{ selectedOTs.length }})
               </v-btn>
             </v-fade-transition>
           </div>
 
           <div class="flex-grow-1 overflow-auto custom-scrollbar pa-2">
             <v-data-table
-              :headers="toHeaders"
-              :items="toData"
+              :headers="otHeaders"
+              :items="otData"
               density="compact"
               hide-default-footer
               class="dense-table text-no-wrap border rounded-0"
@@ -101,46 +102,61 @@
                 </div>
               </template>
 
-              <template v-slot:item.travelDate="{ item }">
-                <span class="font-weight-medium">{{ formatDate(item.travel_dt_out) }}</span>
+              <template v-slot:[`item.ot_date`]="{ item }">
+                <span class="font-weight-medium">{{ formatDate(item.ot_date) }}</span>
               </template>
-              <template v-slot:item.travel_dt_out="{ item }">
-                <span class="font-weight-medium">{{ formatTime(item.travel_dt_out) }}</span>
+              <template v-slot:[`item.ot_adv_time_in`]="{ item }">
+                <span class="font-weight-medium">{{ formatTime(item.ot_adv_time_in) }}</span>
               </template>
-              <template v-slot:item.travel_dt_in="{ item }">
-                <span class="font-weight-medium">{{ formatTime(item.travel_dt_in) }}</span>
+              <template v-slot:[`item.ot_adv_time_out`]="{ item }">
+                <span class="font-weight-medium">{{ formatTime(item.ot_adv_time_out) }}</span>
               </template>
-              <template v-slot:item.approved="{ item }">
+              <template v-slot:[`item.ot_time_in`]="{ item }">
+                <span class="font-weight-medium">{{ formatTime(item.ot_time_in) }}</span>
+              </template>
+              <template v-slot:[`item.ot_time_out`]="{ item }">
+                <span class="font-weight-medium">{{ formatTime(item.ot_time_out) }}</span>
+              </template>
+              <template v-slot:[`item.ot_brktime_in`]="{ item }">
+                <span class="font-weight-medium">{{ formatTime(item.ot_brktime_in) }}</span>
+              </template>
+              <template v-slot:[`item.ot_brktime_out`]="{ item }">
+                <span class="font-weight-medium">{{ formatTime(item.ot_brktime_out) }}</span>
+              </template>
+
+              <template v-slot:[`item.apprvd`]="{ item }">
                 <v-chip
-                  :color="getStatusColor(item.approved)"
+                  :color="getStatusColor(item.apprvd)"
                   size="x-small"
                   label
                   class="font-weight-bold"
                 >
                   {{
-                    item.approved === '1' || item.approved === 'Y' || item.approved === 1
+                    item.apprvd === '1' || item.apprvd === 'Y' || item.apprvd === 1
                       ? 'Approved'
                       : 'Pending'
                   }}
                 </v-chip>
               </template>
-              <template v-slot:item.actions="{ item }">
+              <template v-slot:[`item.actions`]="{ item }">
                 <div class="d-flex justify-center align-center w-100">
                   <v-tooltip
-                    :text="isApproved(item.approved) ? 'Already Approved' : 'Select for Approval'"
+                    :text="
+                      isApproved(item.date_posted) ? 'Already Approved' : 'Select for Approval'
+                    "
                     location="top"
                   >
                     <template v-slot:activator="{ props }">
                       <div
-                        v-if="!item.approved || item.approved === '0' || item.approved === 0"
+                        v-if="!item.apprvd || item.apprvd === '0' || item.apprvd === 0"
                         v-bind="props"
                         class="action-checkbox-wrapper"
                       >
                         <v-checkbox-btn
-                          :model-value="isApproved(item.approved) || isSelected(item)"
-                          :readonly="isApproved(item.approved)"
-                          :color="isApproved(item.approved) ? 'success' : 'primary'"
-                          :icon="isApproved(item.approved) ? 'mdi-check-circle' : undefined"
+                          :model-value="isApproved(item.date_posted) || isSelected(item)"
+                          :readonly="isApproved(item.date_posted)"
+                          :color="isApproved(item.date_posted) ? 'success' : 'primary'"
+                          :icon="isApproved(item.date_posted) ? 'mdi-check-circle' : undefined"
                           density="compact"
                           class="centered-checkbox"
                           @change="toggleSelection(item)"
@@ -211,28 +227,34 @@ interface Employee {
   fullName: string
 }
 
-interface TravelOrderApplication {
+interface OvertimeApplication {
   emp_no: string
-  travel_passno: string
-  travel_dt_out: string
-  travel_dt_in: string
-  destination: string
-  reason: string
-  remarks: string
-  approved: number
+  ot_date: string
+  ot_time_in: string
+  ot_tme_out: string
+  date_posted: string
+  ot_brktime_in: string
+  ot_brktime_out: string
+  encoder: string
+  ot_adv_time_in: string
+  ot_adv_time_out: string
+  apprvd: string | null | number
+  init_cd: string
+  phalf: string
 }
 
 // --- State ---
 const authStore = useAuthStore()
 const searchQuery = ref('')
 const selectedEmployee = ref<Employee | null>(null)
-const toData = ref<TravelOrderApplication[]>([])
+const otData = ref<OvertimeApplication[]>([])
 const employees = ref<Employee[]>([])
-const selectedto = ref<TravelOrderApplication[]>([])
+const selectedOTs = ref<OvertimeApplication[]>([])
 const snackbar = ref(false)
 const snackbarMessage = ref('')
 const snackbarColor = ref('success')
 const isProcessing = ref(false)
+const isLoading = ref(false)
 
 // --- Headers ---
 const employeeHeaders = [
@@ -240,15 +262,15 @@ const employeeHeaders = [
   { title: 'Employee Name', key: 'fullName', align: 'start', sortable: true, width: '70%' },
 ]
 
-const toHeaders = [
-  { title: 'Travel Pass No.', key: 'travel_passno', align: 'start' },
-  { title: 'Travel Order Date', key: 'travelDate', align: 'start' },
-  { title: 'Travel Time Out', key: 'travel_dt_out' },
-  { title: 'Travel Time In', key: 'travel_dt_in' },
-  { title: 'Destination', key: 'destination' },
-  { title: 'Reason', key: 'reason' },
-  { title: 'Remarks', key: 'remarks' },
-  { title: 'Status', key: 'approved', align: 'center' },
+const otHeaders = [
+  { title: 'Overtime Date', key: 'ot_date' },
+  { title: 'Adv Time In', key: 'ot_adv_time_in' },
+  { title: 'Adv Time Out', key: 'ot_adv_time_out' },
+  { title: 'Time In', key: 'ot_time_in' },
+  { title: 'Time Out', key: 'ot_time_out' },
+  { title: 'Break In', key: 'ot_brktime_in' },
+  { title: 'Break Out', key: 'ot_brktime_out' },
+  { title: 'Status', key: 'apprvd', align: 'center' },
   { title: 'Actions', key: 'actions', sortable: false, align: 'center' },
 ]
 
@@ -261,42 +283,42 @@ const filteredEmployees = computed(() => {
   )
 })
 
-const isApproved = (approve: string | null | number) => {
-  return approve === 1 || approve === '1'
+const isApproved = (datePosted: string | null) => {
+  return datePosted !== null && datePosted !== '00/00/0000'
 }
 
-const getStatusColor = (approve: string | null | number) => {
-  return approve === 1 || approve === '1' ? 'success' : 'warning'
+const getStatusColor = (apprvd: string | null | number) => {
+  return apprvd === '1' || apprvd === 'Y' || apprvd === 1 ? 'success' : 'warning'
 }
 
-const doneApproved = (approve: string) => {
-  if (approve === '1' || approve === 'Y') return 'success'
-  return 'warning'
-}
+// const doneApproved = (approve: string | null | number) => {
+//   if (approve === '1' || approve === 'Y' || approve === 1) return 'success'
+//   return 'warning'
+// }
 
 const selectEmployee = async (employee: Employee) => {
   try {
+    isLoading.value = true
     if (!employee) return
 
     // Immediately set selected employee and wipe old data to prevent ghosts
     selectedEmployee.value = employee
-    toData.value = []
+    otData.value = []
 
     const dFrom = formatDateOnly(authStore.payrollInit?.pay_fr ?? '')
     const dto = formatDateOnly(authStore.payrollInit?.pay_to ?? '')
 
-    const res = await Api.EmployeeTravelOrderRequest(
+    const res = await Api.FetchEmployeeovertimeRequest(
       employee.emp_no,
       dFrom,
       dto,
       authStore.accessToken,
     )
 
-    console.log(res.data)
-    const data = res.data.travelOrder
+    const data = res.data.overtimes
 
     if (data && data.length > 0) {
-      toData.value = data
+      otData.value = data
     }
 
     // Auto-scroll logic for Mobile devices
@@ -310,6 +332,8 @@ const selectEmployee = async (employee: Employee) => {
     }
   } catch (error) {
     console.log(error)
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -317,7 +341,7 @@ const loadEmployees = async () => {
   try {
     const dFrom = formatDateOnly(authStore.payrollInit?.pay_fr ?? '')
     const dto = formatDateOnly(authStore.payrollInit?.pay_to ?? '')
-    const response = await Api.FetchEmployeeByApprover(authStore.accessToken, 'travel', dFrom, dto)
+    const response = await Api.FetchEmployeeByApprover(authStore.accessToken, 'ot', dFrom, dto)
     employees.value = response.data.employees
   } catch (error) {
     console.log(error)
@@ -348,56 +372,42 @@ const formatDate = (dateString: string) => {
   })
 }
 
-const checkWithPay = (val: string | null | undefined): boolean => {
-  if (!val) return false
+// const checkWithPay = (val: string | null | undefined): boolean => {
+//   if (!val) return false
 
-  const normalized = val.toString().trim().toUpperCase()
-  return normalized === 'Y' || normalized === '1' || normalized === 'TRUE'
+//   const normalized = val.toString().trim().toUpperCase()
+//   return normalized === 'Y' || normalized === '1' || normalized === 'TRUE'
+// }
+
+const isSelected = (ot: OvertimeApplication) => {
+  return selectedOTs.value.some((item) => item.ot_date === ot.ot_date && item.emp_no === ot.emp_no)
 }
 
-const isSelected = (to: TravelOrderApplication) => {
-  return selectedto.value.some(
-    (item) => item.travel_passno === to.travel_passno && item.emp_no === to.emp_no,
-  )
-}
-
-const toggleSelection = async (to: TravelOrderApplication) => {
-  const index = selectedto.value.findIndex(
-    (item) => item.travel_passno === to.travel_passno && item.emp_no === to.emp_no,
+const toggleSelection = async (ot: OvertimeApplication) => {
+  const index = selectedOTs.value.findIndex(
+    (item) => item.ot_date === ot.ot_date && item.emp_no === ot.emp_no,
   )
   if (index > -1) {
-    selectedto.value.splice(index, 1)
+    selectedOTs.value.splice(index, 1)
   } else {
-    selectedto.value.push(to)
+    selectedOTs.value.push(ot)
   }
 }
 
-const rejectLeave = async (to: TravelOrderApplication) => {
-  try {
-    console.log('Reject clicked for:', to)
-    // Add your reject logic/API call here
-  } catch (error) {
-    console.log(error)
-  }
-}
-
-const approveBulkTravelOrder = async () => {
-  if (selectedto.value.length === 0) return
+const approveBulkOT = async () => {
+  if (selectedOTs.value.length === 0) return
   isProcessing.value = true
-  const dToday = formatDateOnly(new Date().toISOString())
 
   try {
-    console.log(selectedto.value)
-    const payload = selectedto.value.map((to) => ({
-      emp_no: to.emp_no,
-      travel_passno: to.travel_passno,
-      approved: 1,
+    const payload = selectedOTs.value.map((ot) => ({
+      emp_no: ot.emp_no,
+      ot_date: formatDateOnly(ot.ot_date),
     }))
 
-    const res = await Api.BulkApproveTravelOrder(authStore.accessToken, payload)
+    const res = await Api.BulkApproveOvertime(authStore.accessToken, payload)
 
     if (res.data.success) {
-      snackbarMessage.value = `Successfully approved ${selectedto.value.length} applications.`
+      snackbarMessage.value = `Successfully approved ${selectedOTs.value.length} applications.`
       snackbarColor.value = 'success'
       snackbar.value = true
 
@@ -407,7 +417,7 @@ const approveBulkTravelOrder = async () => {
       }
 
       // Clear selection
-      selectedto.value = []
+      selectedOTs.value = []
     }
   } catch (error) {
     console.error('Bulk Approval Error:', error)
@@ -442,6 +452,8 @@ watch(
     // Only trigger if we actually have a selected employee and valid payroll dates
     if (selectedEmployee.value && newVal) {
       selectEmployee(selectedEmployee.value)
+    } else {
+      loadEmployees() // Refresh employee list if payrollInit changes and no employee is selected
     }
   },
   { immediate: true },

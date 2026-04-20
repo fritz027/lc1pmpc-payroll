@@ -9,6 +9,7 @@ import type {
   ManPowerRequestPayload,
   PayslipPayloadSetting,
   SaveBulkApprovalPayload,
+  Company,
 } from '@/types/general'
 import Employee from './Employee'
 
@@ -187,7 +188,7 @@ export default {
       },
     })
   },
-  BulkApproveLeave(token: string, payload: BulkApproveLeavePayload) {
+  BulkApproveLeave(token: string, payload: BulkApproveLeavePayload[]) {
     return Api.patch(`${endPoint}/bulk-approve-leave`, payload, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -278,4 +279,18 @@ export default {
       },
     })
   },
+  FetchCompanies(token: string) {
+    return Api.get(`${endPoint}/companies`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+  },
+  FetchEmployeesByCompany(token: string, companyCode: string, empNo: string) {
+    return Api.get(`${endPoint}/employees/company?code=${companyCode}&emp_no=${empNo}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+  }
 }

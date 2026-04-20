@@ -25,7 +25,7 @@
           hover
           class="text-no-wrap striped-table custom-table-border"
         >
-          <template v-slot:item.ot_date="{ item }">
+          <template v-slot:[`item.ot_date`]="{ item }">
             {{ formatDate(item.ot_date) }}
           </template>
 
@@ -33,33 +33,35 @@
             {{ formatTime(item.adv_time_in) }}
           </template> -->
 
-          <template v-slot:item.ot_time_in="{ item }">
+          <template v-slot:[`item.ot_time_in`]="{ item }">
             {{ formatTime(item.ot_time_in) }}
           </template>
 
-          <template v-slot:item.ot_brktime_out="{ item }">
+          <template v-slot:[`item.ot_brktime_out`]="{ item }">
             {{ formatTime(item.ot_brktime_out) }}
           </template>
 
-          <template v-slot:item.ot_brktime_in="{ item }">
+          <template v-slot:[`item.ot_time_out`]="{ item }">
+            {{ formatTime(item.ot_time_out) }}
+          </template>
+
+          <template v-slot:[`item.ot_brktime_in`]="{ item }">
             {{ formatTime(item.ot_brktime_in) }}
           </template>
 
-          <template v-slot:item.ot_time_out="{ item }">
-            {{ formatTime(item.ot_time_out) }}
-          </template>
+
 
           <!-- <template v-slot:item.adv_time_out="{ item }">
             {{ formatTime(item.adv_time_out) }}
           </template> -->
 
-          <template v-slot:item.apprvd="{ item }">
+          <template v-slot:[`item.apprvd`]="{ item }">
             <v-chip :color="item.apprvd === 1 ? 'success' : 'warning'" size="small" variant="flat">
               {{ item.apprvd === 1 ? 'Approved' : 'Pending' }}
             </v-chip>
           </template>
 
-          <template v-slot:item.actions="{ item }">
+          <template v-slot:[`item.actions`]="{ item }">
             <div class="d-flex gap-1 align-center">
               <template v-if="item.apprvd !== 1">
                 <v-tooltip text="Edit Overtime" location="top">
@@ -144,7 +146,7 @@ const onClose = () => {
   dialog.value = false
 }
 
-const onLeaveSaved = async (newOvertimeData: any, isEditMode: boolean) => {
+const onLeaveSaved = async (newOvertimeData: OvertimeRecord, isEditMode: boolean) => {
   try {
     const payload = {
       ot_date: newOvertimeData.ot_date,
@@ -159,7 +161,7 @@ const onLeaveSaved = async (newOvertimeData: any, isEditMode: boolean) => {
       apprvd: 0,
     }
     if (!isEditMode) {
-      const isDuplicate = overtimeRecords.value.some((item: any) => {
+      const isDuplicate = overtimeRecords.value.some((item: OvertimeRecord) => {
         const existingDate = item.ot_date ? item.ot_date.slice(0, 10) : ''
         return existingDate === newOvertimeData.ot_date
       })
@@ -208,8 +210,8 @@ const headers = [
   // { title: 'Adv Out', key: 'adv_time_out' },
   { title: 'Time In', key: 'ot_time_in' },
   { title: 'Time Out', key: 'ot_time_out' },
-  { title: 'Break In', key: 'ot_brktime_in' },
   { title: 'Break Out', key: 'ot_brktime_out' },
+  { title: 'Break In', key: 'ot_brktime_in' },
   { title: 'Status', key: 'apprvd', align: 'center' },
   { title: 'Actions', key: 'actions', sortable: false, align: 'end' },
 ]

@@ -1,5 +1,10 @@
 import Api from '@/services/Api'
-import type { GetPaySlip, Suggestions, ChangePassword } from '@/types/general'
+import type {
+  GetPaySlip,
+  Suggestions,
+  ChangePassword,
+  TravelOrderPayload
+ } from '@/types/general'
 
 const endPoint = '/pmdeux/employee'
 export default {
@@ -77,14 +82,14 @@ export default {
       },
     })
   },
-  NewEmployeeTravelOrder(accessToken: string, payload: any) {
+  NewEmployeeTravelOrder(accessToken: string, payload: TravelOrderPayload) {
     return Api.post(`${endPoint}/travel-order/new`, payload, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
     })
   },
-  UpdateEmployeeTravelOrder(accessToken: string, payload: any) {
+  UpdateEmployeeTravelOrder(accessToken: string, payload: TravelOrderPayload) {
     return Api.patch(`${endPoint}/travel-order/update`, payload, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -93,6 +98,13 @@ export default {
   },
   DeleteEmployeeTravelOrder(accessToken: string, id: string) {
     return Api.delete(`${endPoint}/travel-order/remove/${id}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+  },
+  FetchPendingApprovalCount(accessToken: string, from: string, to: string) {
+    return Api.get(`${endPoint}/pending-approvals?from=${from}&to=${to}`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },

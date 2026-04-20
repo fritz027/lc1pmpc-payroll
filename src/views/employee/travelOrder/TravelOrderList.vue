@@ -27,19 +27,19 @@
           hover
           class="text-no-wrap striped-table custom-table-border"
         >
-          <template v-slot:item.dDate="{ item }">
+          <template v-slot:[`item.dDate`]="{ item }">
             {{ formatDate(item.travel_dt_out) }}
           </template>
 
-          <template v-slot:item.travel_dt_out="{ item }">
+          <template v-slot:[`item.travel_dt_out`]="{ item }">
             {{ formatTime(item.travel_dt_out) }}
           </template>
 
-          <template v-slot:item.travel_dt_in="{ item }">
+          <template v-slot:[`item.travel_dt_in`]="{ item }">
             {{ formatTime(item.travel_dt_in) }}
           </template>
 
-          <template v-slot:item.approved="{ item }">
+          <template v-slot:[`item.approved`]="{ item }">
             <v-chip
               :color="item.approved === 1 ? 'success' : 'warning'"
               size="small"
@@ -49,7 +49,7 @@
             </v-chip>
           </template>
 
-          <template v-slot:item.actions="{ item }">
+          <template v-slot:[`item.actions`]="{ item }">
             <div class="d-flex gap-1 align-center">
               <template v-if="item.approved !== 1">
                 <v-tooltip text="Edit Overtime" location="top">
@@ -131,7 +131,7 @@ const onClose = () => {
   dialog.value = false
 }
 
-const onLeaveSaved = async (newTravelData: any, isEditMode: boolean) => {
+const onLeaveSaved = async (newTravelData: TravelOrder, isEditMode: boolean) => {
   try {
     const payload = {
       travel_dt_out: formatForSQLAnywhere(newTravelData.travel_dt_out),

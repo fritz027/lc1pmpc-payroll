@@ -65,10 +65,17 @@ import dayjs from 'dayjs'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker
 
-const cutOff = ref<any>(null)
-const cutOffs = ref([])
+type CutOff = {
+  cutoff: string
+  init_cd: string
+  dateFrom: string
+  dateTo: string
+}
+
+const cutOff = ref<CutOff | null>(null)
+const cutOffs = ref<CutOff[]>([])
 const authStore = useAuthStore()
-const canvas = ref<HTMLCanvasElement | null>(null)
+// const canvas = ref<HTMLCanvasElement | null>(null)
 const loading = ref<boolean>(false)
 const pdfBlob = ref<Blob | null>(null)
 const pdfUrl = ref('')
@@ -89,7 +96,7 @@ const checkPaySlipAvailable = async () => {
     }
 
     const { dateFrom, dateTo, enable } = payslipSetting.data.setting
-
+    console.log('Payslip Setting:', { dateFrom, dateTo, enable })
     // If disabled in settings, hide payslip
     if (!enable) {
       viewPayslip.value = false
@@ -140,8 +147,8 @@ const downloadPDF = () => {
 const getPaySlip = async () => {
   try {
     loading.value = true
-    const dtFrom = dayjs(cutOff.value.dateFrom, 'MM/DD/YYYY').format('YYYY-MM-DD')
-    const dtTo = dayjs(cutOff.value.dateTo, 'MM/DD/YYYY').format('YYYY-MM-DD')
+    const dtFrom = dayjs(cutOff.value?.dateFrom, 'MM/DD/YYYY').format('YYYY-MM-DD')
+    const dtTo = dayjs(cutOff.value?.dateTo, 'MM/DD/YYYY').format('YYYY-MM-DD')
     const response = await emploteeApi.GetPaySlip(authStore.accessToken, {
       employeeNo: authStore.employee?.employeeNo ?? '',
       dateFrom: dtFrom,
