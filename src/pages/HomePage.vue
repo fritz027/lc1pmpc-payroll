@@ -305,11 +305,13 @@ const pendingCounts = ref({
 const name = ref('')
 const avatar = ref('')
 const role = ref<string>('')
+const withCDO = ref<string>('')
 
 onMounted(() => {
   if (authStore.employee) {
     name.value = `${authStore.employee.lastName}, ${authStore.employee.firstName}`
     avatar.value = authStore.employee.gender === 'F' ? female : male
+    withCDO.value = authStore.employee.withCDO || ''
   }
 
   role.value = (authStore.role || 'user').toLowerCase()
@@ -344,6 +346,10 @@ const visibleGroups = computed(() => {
 
     // 2. Check item-level access (This makes the 'Change Day-off' restriction work)
     const filteredItems = group.items.filter((item) => {
+      if (item.title === 'Change Day-off' && withCDO.value !== 'Y') {
+        return false
+      }
+
       if (!item.roles) return true // Public to everyone in the group
       return item.roles.includes(currentUserRole) // Restricted
     })

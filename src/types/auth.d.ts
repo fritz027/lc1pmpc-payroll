@@ -19,6 +19,7 @@ export interface Employee {
   lastName: string
   firstName: string
   gender: string
+  withCDO: string
   dateHired?: string
 }
 
