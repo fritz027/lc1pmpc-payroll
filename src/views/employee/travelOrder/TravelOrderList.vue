@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <v-container max-width="800" class="pb-6">
     <v-row class="mb-4" align="center">
       <v-col cols="12" md="6">
         <h2 class="text-h5 font-weight-bold mb-1">Travel Orders</h2>
@@ -85,7 +85,7 @@
       </div>
     </v-card>
 
-    <v-dialog v-model="dialog" max-width="850px" persistent>
+    <v-dialog v-model="dialog" max-width="850px" class="pb-10">
       <NewTravelOrder :edit-data="selectedItem" @close="onClose" @saved="onLeaveSaved" />
     </v-dialog>
     <v-snackbar v-model="errorSnack" color="error" location="top" timeout="3000">
@@ -98,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import Api from '@/Api/Employee'
 import NewTravelOrder from './NewTravelOrder.vue'
@@ -290,4 +290,31 @@ watch(
   () => fetchTravelOrders(),
   { immediate: true },
 )
+
+const handleBackNavigation = () => {
+  // Logic to handle back navigation, e.g., reset state or navigate to a specific route
+  if (dialog.value) {
+    dialog.value = false
+  }
+}
+
+watch(dialog, (newVal) => {
+  if (newVal) {
+    window.history.pushState({ dialogOpen: true }, '')
+    window.addEventListener('popstate', handleBackNavigation)
+  } else {
+    // Clean up when the dialog is closed via "Save" or "Cancel"
+    window.removeEventListener('popstate', handleBackNavigation)
+
+    // If the dialog closed but the history state is still there, remove it
+    if (window.history.state?.dialogOpen) {
+      window.history.back()
+    }
+  }
+})
+
+// Always remove the listener if the user leaves the page entirely
+onUnmounted(() => {
+  window.removeEventListener('popstate', handleBackNavigation)
+})
 </script>

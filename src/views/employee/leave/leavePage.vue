@@ -116,11 +116,11 @@
         class="elevation-0 striped-table custom-table-border"
         hover
       >
-        <template v-slot:item.leave_dt="{ item }">
+        <template v-slot:[`item.leave_dt`]="{ item }">
           <span class="font-weight-medium">{{ formatDate(item.leave_dt) }}</span>
         </template>
 
-        <template #item.status="{ item }">
+        <template v-slot:[`item.status`]="{ item }">
           <v-chip
             :color="getStatusColor(item.apprvd)"
             :variant="isApproved(item.apprvd) ? 'flat' : 'tonal'"
@@ -131,7 +131,7 @@
           </v-chip>
         </template>
 
-        <template v-slot:item.actions="{ item }">
+        <template v-slot:[`item.actions`]="{ item }">
           <div class="d-flex gap-1 align-center">
             <template v-if="!isApproved(item.apprvd)">
               <v-tooltip text="View Record" location="top">
@@ -180,7 +180,7 @@
       </v-data-table>
     </v-card>
 
-    <v-dialog v-model="dialog" max-width="850px" persistent>
+    <v-dialog v-model="dialog" max-width="850px" class="pb-10">
       <NewLeave
         :for-year="selectedYear"
         :edit-data="selectedItem"
@@ -199,7 +199,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import leaveApi from '@/Api/Leave'
 import NewLeave from './newLeave.vue'
@@ -233,6 +233,14 @@ interface LeaveApplication {
   with_pay: string
   reason: string
   apprvd: string
+}
+
+interface NewLeaveData {
+  leaveDate: string;
+  kindOfLeave: string;
+  withPay: boolean;
+  hours: number;
+  reason: string;
 }
 
 const currentYear = new Date().getFullYear().toString()
@@ -306,20 +314,17 @@ const formatDate = (dateString: string) => {
   })
 }
 
-const onLeaveSaved = async (newLeaveData: any) => {
+const onLeaveSaved = async (newLeaveData: NewLeaveData) => {
   // 1. Prepare Key Identifiers for Comparison
   // We use strings for consistency since database values often return as strings
   const newDate = newLeaveData.leaveDate // Format: 'YYYY-MM-DD'
-  const newType = newLeaveData.kindOfLeave
-  const newPayStatus = newLeaveData.withPay ? '1' : '0'
 
   // 2. Duplicate Check Logic
   // Only run this if we are creating a NEW record (not editing an existing one)
   if (!selectedItem.value) {
-    const isDuplicate = leaveRecords.value.some((item: any) => {
+    const isDuplicate = leaveRecords.value.some((item: LeaveApplication) => {
       // Normalize existing date: slice(0, 10) ensures 'YYYY-MM-DD' comparison
       const existingDate = item.leave_dt ? item.leave_dt.slice(0, 10) : ''
-      const existingPay = String(item.with_pay)
 
       return existingDate === newDate
     })
@@ -380,11 +385,11 @@ const openDialog = (item: LeaveApplication | null = null) => {
   dialog.value = true
 }
 
-const editLeave = (item: LeaveApplication) => {
-  console.log('Editing:', item.emp_no)
-  isView.value = false
-  openDialog(item)
-}
+// const editLeave = (item: LeaveApplication) => {
+//   console.log('Editing:', item.emp_no)
+//   isView.value = false
+//   openDialog(item)
+// }
 
 const onClose = () => {
   isView.value = false
@@ -422,6 +427,35 @@ const viewLeave = (item: LeaveApplication | null) => {
   isView.value = true
   dialog.value = true
 }
+
+const handleBackNavigation = () => {
+  // Logic to handle back navigation, e.g., reset state or navigate to a specific route
+  if (dialog.value) {
+    dialog.value = false
+    selectedItem.value = null
+  }
+}
+
+watch(dialog, (newVal) => {
+  if (newVal) {
+    window.history.pushState({ dialogOpen: true }, '')
+    window.addEventListener('popstate', handleBackNavigation)
+  } else {
+    // Clean up when the dialog is closed via "Save" or "Cancel"
+    window.removeEventListener('popstate', handleBackNavigation)
+
+    // If the dialog closed but the history state is still there, remove it
+    if (window.history.state?.dialogOpen) {
+      window.history.back()
+    }
+  }
+})
+
+// Always remove the listener if the user leaves the page entirely
+onUnmounted(() => {
+  window.removeEventListener('popstate', handleBackNavigation)
+})
+
 </script>
 
 <style scoped>

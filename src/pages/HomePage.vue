@@ -114,7 +114,7 @@
         </div>
       </v-app-bar-title>
 
-      <v-spacer></v-spacer>
+
 
       <div
         v-if="!mobile && authStore.getPayrollInit"
@@ -469,6 +469,15 @@ const savePassword = async () => {
 const formatDate = (dateString: string | Date) => {
   if (!dateString) return ''
   const date = new Date(dateString)
+
+  // Get individual components
+  const mm = (date.getMonth() + 1).toString().padStart(2, '0')
+  const dd = date.getDate().toString().padStart(2, '0')
+  const yyyy = date.getFullYear()
+
+  if (mobile.value) {
+    return `${mm}-${dd}-${yyyy}`
+  }
   return `${date.toLocaleString('default', { month: 'short' })} ${date.getDate()} ${date.getFullYear()}`
 }
 

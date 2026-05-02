@@ -1,138 +1,141 @@
 <template>
-  <v-container max-width="800">
-    <v-card class="pa-4 pa-sm-6" elevation="3">
-      <v-card-title class="text-h5 font-weight-bold mb-4 px-0">
+  <v-container max-width="800" class="pb-6">
+    <v-card class="elevation-3 d-flex flex-column" max-height="90vh">
+      <v-card-title class="bg-primary text-white d-flex align-center py-3 px-6">
+        <v-icon icon="mdi-clock-time-four" color="white" class="me-2" />
         {{ isEditMode ? 'Edit Overtime' : 'File New Overtime' }}
       </v-card-title>
-      <v-alert
-        v-if="errorMessage"
-        type="error"
-        variant="tonal"
-        class="mb-4"
-        closable
-        @click:close="errorMessage = ''"
-      >
-        {{ errorMessage }}
-      </v-alert>
+      <v-card-text class="overflow-y-auto pa-6 pt-2">
+        <v-alert
+          v-if="errorMessage"
+          type="error"
+          variant="tonal"
+          class="mb-4"
+          closable
+          @click:close="errorMessage = ''"
+        >
+          {{ errorMessage }}
+        </v-alert>
 
-      <v-form @submit.prevent="handleSave" ref="overtimeForm" v-model="isFormValid">
-        <v-row>
-          <v-col cols="12" sm="6">
-            <v-text-field
-              v-model="formData.ot_date"
-              label="Date of Overtime"
-              type="date"
-              variant="outlined"
-              density="comfortable"
-              :rules="[(v: any) => !!v || 'Overtime Date is required']"
-              :readonly="isEditMode"
-              clearable
-            ></v-text-field>
-          </v-col>
-          <v-col cols="12" sm="6">
-            <v-select
-              v-model="formData.shift_code"
-              :items="shiftOptions"
-              label="Shift Code"
-              readonly="true"
-              variant="outlined"
-              density="comfortable"
-            ></v-select>
-          </v-col>
-        </v-row>
+        <v-form @submit.prevent="handleSave" ref="overtimeForm" v-model="isFormValid">
+          <v-row>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                v-model="formData.ot_date"
+                label="Date of Overtime"
+                type="date"
+                variant="outlined"
+                density="comfortable"
+                :rules="[(v: any) => !!v || 'Overtime Date is required']"
+                :readonly="isEditMode"
+                clearable
+              ></v-text-field>
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-select
+                v-model="formData.shift_code"
+                :items="shiftOptions"
+                label="Shift Code"
+                readonly="true"
+                variant="outlined"
+                density="comfortable"
+              ></v-select>
+            </v-col>
+          </v-row>
 
-        <v-divider class="mb-4 mt-2"></v-divider>
+          <!-- <v-divider class="mb-4 mt-2"></v-divider> -->
 
-        <!-- <h3 class="text-subtitle-1 font-weight-medium mb-2 text-primary">Advance Time</h3>
-        <v-row>
-          <v-col cols="12" sm="6" class="py-2">
-            <v-text-field
-              v-model="formData.adv_time_in"
-              label="Advance Time In"
-              type="time"
-              variant="outlined"
-              density="comfortable"
-            ></v-text-field>
-          </v-col>
-          <v-col cols="12" sm="6" class="py-2">
-            <v-text-field
-              v-model="formData.adv_time_out"
-              label="Advance Time Out"
-              type="time"
-              variant="outlined"
-              density="comfortable"
-            ></v-text-field>
-          </v-col>
-        </v-row> -->
+          <!-- <h3 class="text-subtitle-1 font-weight-medium mb-2 text-primary">Advance Time</h3>
+          <v-row>
+            <v-col cols="12" sm="6" class="py-2">
+              <v-text-field
+                v-model="formData.adv_time_in"
+                label="Advance Time In"
+                type="time"
+                variant="outlined"
+                density="comfortable"
+              ></v-text-field>
+            </v-col>
+            <v-col cols="12" sm="6" class="py-2">
+              <v-text-field
+                v-model="formData.adv_time_out"
+                label="Advance Time Out"
+                type="time"
+                variant="outlined"
+                density="comfortable"
+              ></v-text-field>
+            </v-col>
+          </v-row> -->
 
-        <v-divider class="mb-4 mt-2"></v-divider>
+          <v-divider class="mb-4 mt-2"></v-divider>
 
-        <h3 class="text-subtitle-1 font-weight-medium mb-2 text-primary">Regular Overtime</h3>
-        <v-row>
-          <v-col cols="12" sm="6" class="py-2">
-            <v-text-field
-              v-model="formData.ot_time_in"
-              label="Overtime Time In"
-              type="time"
-              variant="outlined"
-              density="comfortable"
-              :rules="otTimeInRules"
-            ></v-text-field>
-          </v-col>
-          <v-col cols="12" sm="6" class="py-2">
-            <v-text-field
-              v-model="formData.ot_time_out"
-              label="Overtime Time Out"
-              type="time"
-              variant="outlined"
-              density="comfortable"
-              :rules="otTimeOutRules"
-            ></v-text-field>
-          </v-col>
-        </v-row>
+          <h3 class="text-subtitle-1 font-weight-medium mb-2 text-primary">Regular Overtime</h3>
+          <v-row>
+            <v-col cols="12" sm="6" class="py-2">
+              <v-text-field
+                v-model="formData.ot_time_in"
+                label="Overtime Time In"
+                type="time"
+                variant="outlined"
+                density="comfortable"
+                :rules="otTimeInRules"
+              ></v-text-field>
+            </v-col>
+            <v-col cols="12" sm="6" class="py-2">
+              <v-text-field
+                v-model="formData.ot_time_out"
+                label="Overtime Time Out"
+                type="time"
+                variant="outlined"
+                density="comfortable"
+                :rules="otTimeOutRules"
+              ></v-text-field>
+            </v-col>
+          </v-row>
 
-        <v-divider class="mb-4 mt-2"></v-divider>
+          <v-divider class="mb-4 mt-2"></v-divider>
 
-        <h3 class="text-subtitle-1 font-weight-medium mb-2 text-primary">Break Time</h3>
-        <v-row>
-          <v-col cols="12" sm="6" class="py-2">
-            <v-text-field
-              v-model="formData.ot_brktime_out"
-              label="Break Time Out (Start Break)"
-              type="time"
-              variant="outlined"
-              density="comfortable"
-              clearable
-              :rules="breakTimeOutRules"
-            ></v-text-field>
-          </v-col>
-          <v-col cols="12" sm="6" class="py-2">
-            <v-text-field
-              v-model="formData.ot_brktime_in"
-              label="Break Time In (End Break)"
-              type="time"
-              variant="outlined"
-              density="comfortable"
-              clearable
-              :rules="breakTimeInRules"
-            ></v-text-field>
-          </v-col>
-        </v-row>
+          <h3 class="text-subtitle-1 font-weight-medium mb-2 text-primary">Break Time</h3>
+          <v-row>
+            <v-col cols="12" sm="6" class="py-2">
+              <v-text-field
+                v-model="formData.ot_brktime_out"
+                label="Break Time Out (Start Break)"
+                type="time"
+                variant="outlined"
+                density="comfortable"
+                clearable
+                :rules="breakTimeOutRules"
+              ></v-text-field>
+            </v-col>
+            <v-col cols="12" sm="6" class="py-2">
+              <v-text-field
+                v-model="formData.ot_brktime_in"
+                label="Break Time In (End Break)"
+                type="time"
+                variant="outlined"
+                density="comfortable"
+                clearable
+                :rules="breakTimeInRules"
+              ></v-text-field>
+            </v-col>
+          </v-row>
 
-        <v-row class="mt-4">
-          <v-col cols="12" class="d-flex justify-end gap-2">
-            <v-btn @click="handleClose" color="grey-darken-1" variant="text">Cancel</v-btn>
-            <v-btn
-              :disabled="!canSubmit"
-              color="primary"
-              type="submit"
-              prepend-icon="mdi-content-save"
-            >
-              {{ isEditMode ? 'Update Overtime' : 'Save Overtime' }}
-            </v-btn>
-          </v-col>
-        </v-row>
-      </v-form>
+          <v-row class="mt-4">
+            <v-col cols="12" class="d-flex justify-end gap-2">
+              <v-btn @click="handleClose" color="grey-darken-1" variant="text">Cancel</v-btn>
+              <v-btn
+                :disabled="!canSubmit"
+                color="primary"
+                type="submit"
+                prepend-icon="mdi-content-save"
+              >
+                {{ isEditMode ? 'Update Overtime' : 'Save Overtime' }}
+              </v-btn>
+            </v-col>
+          </v-row>
+        </v-form>
+      </v-card-text>
     </v-card>
   </v-container>
 </template>
@@ -194,6 +197,7 @@ const formData = ref({
 })
 
 const handleClose = () => {
+  errorMessage.value = ''
   emit('close')
 }
 

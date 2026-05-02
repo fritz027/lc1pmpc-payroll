@@ -1,11 +1,12 @@
 <template>
   <v-container>
     <v-card class="rounded-2xl pa-6 elevation-2">
-      <v-card-title class="text-h6 font-weight-semibold mb-4">
-        <v-row align="center" justify="space-between" class="w-100">
-          <span class="text-h6 font-weight-semibold">Create Employee Suggestion</span>
-          <v-btn icon="mdi-close" variant="text" color="grey-darken-1" @click="onClose" /> </v-row
-      ></v-card-title>
+      <v-card-title class="bg-primary text-white d-flex align-center py-3 px-6">
+        <v-icon icon="mdi-lightbulb-on" start />
+        <span class="text-h6 font-weight-semibold">New Suggestion</span>
+        <v-spacer />
+        <v-btn icon="mdi-close" variant="text" color="white" @click="onClose" />
+      </v-card-title>
       <v-form ref="formRef" @submit.prevent="onSubmit">
         <v-text-field v-model="title" label="Title" :rules="[rules.required]" required />
         <v-textarea
@@ -41,8 +42,8 @@ const suggestion = ref<string>('')
 const files = ref<File>()
 
 const rules = {
-  required: (v: any) => !!v?.length || 'This field is required',
-  min: (v: any) => v.length >= 20 || 'Must be at least 20 characters',
+  required: (v: string) => !!v?.length || 'This field is required',
+  min: (v: string) => v.length >= 20 || 'Must be at least 20 characters',
 }
 
 const onSubmit = async () => {

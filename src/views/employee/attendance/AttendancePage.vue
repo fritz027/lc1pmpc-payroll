@@ -102,7 +102,8 @@
 
     <v-dialog v-model="dialog" max-width="800" persistent>
       <v-card class="pa-2 pa-sm-4">
-        <v-card-title class="text-h5 font-weight-bold d-flex justify-space-between align-center">
+        <v-card-title class="bg-teal-darken-1 text-white d-flex align-center py-3 px-6">
+          <v-icon icon="mdi-calendar-check" start />
           {{ isEditing ? 'Edit Attendance' : 'New Attendance Record' }}
           <v-btn icon="mdi-close" variant="text" density="comfortable" @click="closeDialog"></v-btn>
         </v-card-title>
@@ -210,7 +211,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, onUnmounted } from 'vue'
 import Api from '@/Api/Attendance'
 import { useAuthStore } from '@/stores/auth'
 
@@ -543,4 +544,31 @@ watch(
   },
   { immediate: true },
 )
+
+const handleBackNavigation = () => {
+  // Logic to handle back navigation, e.g., reset state or navigate to a specific route
+  if (dialog.value) {
+    dialog.value = false
+  }
+}
+
+watch(dialog, (newVal) => {
+  if (newVal) {
+    window.history.pushState({ dialogOpen: true }, '')
+    window.addEventListener('popstate', handleBackNavigation)
+  } else {
+    // Clean up when the dialog is closed via "Save" or "Cancel"
+    window.removeEventListener('popstate', handleBackNavigation)
+
+    // If the dialog closed but the history state is still there, remove it
+    if (window.history.state?.dialogOpen) {
+      window.history.back()
+    }
+  }
+})
+
+// Always remove the listener if the user leaves the page entirely
+onUnmounted(() => {
+  window.removeEventListener('popstate', handleBackNavigation)
+})
 </script>

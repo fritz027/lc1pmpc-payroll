@@ -21,7 +21,7 @@
               :items="suggestions"
               class="elevation-0 rounded-2xl striped-table"
             >
-              <template #item.status="{ item }">
+              <template v-slot:[`item.status`]="{ item }">
                 <v-chip
                   :color="ItemStatus(item.status).color"
                   class="text-white rounded-lg cursor-pointer"
@@ -30,10 +30,10 @@
                   {{ ItemStatus(item.status).label }}
                 </v-chip>
               </template>
-              <template #item.dateCreated="{ item }">
+              <template v-slot:[`item.dateCreated`]="{ item }">
                 <div>{{ formatDate(item.dateCreated, 'DD-MM-YYYY') }}</div>
               </template>
-              <template #item.actions="{ item }">
+              <template v-slot:[`item.actions`]="{ item }">
                 <v-row justify="center" align="center" class="ma-0" dense>
                   <v-btn
                     icon="mdi-file-eye"
