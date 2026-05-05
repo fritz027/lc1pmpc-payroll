@@ -342,19 +342,19 @@ const getStatusColor = (datePosted: string | null) => {
 }
 
 const { width, name} = useDisplay()
-const isFullscreen = ref(false)
+// const isFullscreen = ref(false)
 
 const isMobile = computed(() => ['xs', 'sm'].includes(name.value))
 
-const pdfWidth = computed(() => {
-  if (isMobile.value) {
-    // Take the screen width and subtract the card/dialog margins (usually ~32px)
-    // plus the internal padding we added (~32px).
-    // Total 64px-80px is a safe buffer.
-    return width.value - 80;
-  }
-  return 450;
-})
+// const pdfWidth = computed(() => {
+//   if (isMobile.value) {
+//     // Take the screen width and subtract the card/dialog margins (usually ~32px)
+//     // plus the internal padding we added (~32px).
+//     // Total 64px-80px is a safe buffer.
+//     return width.value - 80;
+//   }
+//   return 450;
+// })
 
 
 const downloadFile = () => {
