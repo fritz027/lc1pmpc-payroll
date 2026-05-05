@@ -47,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, watchEffect } from 'vue'
+import { ref, watchEffect } from 'vue'
 import type { VForm } from 'vuetify/components/VForm'
 import { useRouter } from 'vue-router'
 import * as pdfjsLib from 'pdfjs-dist'
@@ -56,7 +56,7 @@ import { useAuthStore } from '@/stores/auth'
 import adminApi from '@/Api/Admin'
 
 // ✅ Setup PDF.js worker only once
-;(pdfjsLib as any).GlobalWorkerOptions.workerSrc = pdfjsWorker
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -66,7 +66,7 @@ const files = ref<File[]>([])
 const previews = ref<{ type: 'image' | 'pdf'; url: string }[]>([])
 
 const rules = {
-  required: (v: any) => !!v?.length || 'This field is required',
+  required: (v: string) => !!v?.length || 'This field is required',
 }
 
 // Watch for file changes

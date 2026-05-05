@@ -2,134 +2,51 @@
   <v-app>
     <v-main>
       <v-container fluid class="login-page pa-0 ma-0">
-        <v-row v-if="!mobile" class="fill-height no-gutters">
-          <!-- Left Illustration Panel -->
-          <v-col cols="12" md="6" class="gradient-bg d-md-flex">
-            <v-row class="row no-gutters">
-              <v-col cols="12">
-                <v-img :src="logo" max-width="220" height="220" class="animate-bounce" />
-              </v-col>
-              <v-col cols="12">
-                <p class="text-h6 font-weight-bold text-center">
-                  La Castellana 1 Personnel Multi-Purpose Cooperative
-                </p>
-              </v-col>
-            </v-row>
+        <v-row class="fill-height no-gutters">
+
+          <!-- Left Illustration (Hidden on Mobile) -->
+          <v-col v-if="!mobile" cols="12" md="6" class="gradient-bg d-md-flex">
+             <v-row class="row no-gutters">
+                <v-col cols="12">
+                  <v-img :src="logo" max-width="220" height="220" class="animate-bounce" />
+                </v-col>
+                <v-col cols="12">
+                  <p class="text-h6 font-weight-bold text-center">LC1PMPC Online</p>
+                </v-col>
+             </v-row>
           </v-col>
 
-          <!-- Right Login Form -->
-          <v-col cols="12" md="6" class="d-flex align-center justify-center pa-6">
-            <v-card class="pa-8 rounded-xl shadow-lg form-card" max-width="420" width="100%">
-              <v-card-title class="text-h6 font-weight-bold mb-4 text-center">
-                LC1PMPC EMPLOYEE LOGIN
-              </v-card-title>
-              <v-alert
-                v-if="errorMessage"
-                border="start"
-                class="mb-4"
-                elevation="2"
-                prominent
-                type="error"
-                variant="tonal"
-              >
-                {{ errorMessage }}
-              </v-alert>
+          <!-- Right Content Area -->
+          <v-col cols="12" :md="mobile ? 12 : 6" class="d-flex align-center justify-center pa-6">
+            <v-card class="pa-8 rounded-xl shadow-lg" max-width="460" width="100%">
 
-              <v-card-subtitle class="mb-6 text-center">
-                Please sign-in to your account and start the adventure.
-              </v-card-subtitle>
-
-              <v-form @submit.prevent="singIn">
-                <v-text-field
-                  v-model="employeeNo"
-                  label="Employee No."
-                  prepend-inner-icon="mdi-email"
-                  variant="outlined"
-                  rounded
-                  density="comfortable"
-                  class="mb-4"
-                  required
-                />
-
-                <v-text-field
-                  v-model="password"
-                  label="Password"
-                  prepend-inner-icon="mdi-lock"
-                  variant="outlined"
-                  rounded
-                  density="comfortable"
-                  class="mb-2"
-                  required
-                  :type="showPassword ? 'text' : 'password'"
-                  :append-inner-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
-                  @click:append-inner="showPassword = !showPassword"
-                />
-                <!--
-                <v-row align="center" justify="space-between" class="my-2">
-                  <v-checkbox label="Remember Me" hide-details />
-                  <v-btn variant="text" size="small" class="text-blue">Forgot Password?</v-btn>
-                </v-row> -->
-
-                <v-btn type="submit" color="primary" class="mb-4" block rounded @click="singIn">Sign In</v-btn>
-              </v-form>
-            </v-card>
-          </v-col>
-        </v-row>
-        <!-- Mobile View -->
-        <v-row v-else class="fill-height no-gutters">
-          <v-col cols="12" class="d-flex align-center justify-center pa-6">
-            <v-card class="pa-8 rounded-xl shadow-lg form-card" max-width="420" width="100%">
-              <div class="flex-column align-center mb-6">
-                 <v-img :src="logo" max-width="140" height="140" class="animate-bounce" />
-                 <p class="text-subtitle-2 font-weight-bold text-center mt-2 text-teal-darken-2">
-                   LC1PMPC
-                 </p>
+              <!-- Mobile Logo only -->
+              <div v-if="mobile" class="text-center mb-4">
+                <v-img :src="logo" max-width="100" class="mx-auto" />
               </div>
-              <v-card-title class="text-h6 font-weight-bold mb-4 text-center">
-                EMPLOYEE LOGIN
-              </v-card-title>
-              <v-alert
-                v-if="errorMessage"
-                border="start"
-                class="mb-4"
-                elevation="2"
-                prominent
-                type="error"
-                variant="tonal"
-              >
+
+              <v-alert v-if="errorMessage" type="error" variant="tonal" class="mb-4" closable>
                 {{ errorMessage }}
               </v-alert>
-              <v-card-subtitle class="mb-6 text-center">
-                Please sign-in to your account and start the adventure.
-              </v-card-subtitle>
-              <v-form @submit.prevent="singIn">
-                <v-text-field
-                  v-model="employeeNo"
-                  label="Employee No."
-                  prepend-inner-icon="mdi-email"
-                  variant="outlined"
-                  rounded
-                  density="comfortable"
-                  class="mb-4"
-                  required
-                />
 
-                <v-text-field
-                  v-model="password"
-                  label="Password"
-                  prepend-inner-icon="mdi-lock"
-                  variant="outlined"
-                  rounded
-                  density="comfortable"
-                  class="mb-2"
-                  required
-                  :type="showPassword ? 'text' : 'password'"
-                  :append-inner-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
-                  @click:append-inner="showPassword = !showPassword"
-                />
+              <!-- Switch between Login and Register -->
+              <v-window v-model="step">
+                <v-window-item value="login">
+                  <LoginForm @switch="step = 'register'" @login="onSignIn" />
+                </v-window-item>
 
-                <v-btn type="submit" color="primary" class="mb-4" block rounded @click="singIn">Sign In</v-btn>
-              </v-form>
+                <v-window-item value="register">
+                  <RegisterForm @switch="step = 'login'" @register="onRegister" />
+                </v-window-item>
+
+                <v-window-item value="otp">
+                  <OtpForm @switch="FromOTP" @verified="verifyOTP" @resend="ResendOTP" :email="email" :empNo="empNo" :err-msg="errorMessage"/>
+                </v-window-item>
+
+                <v-window-item value="password">
+                  <PasswordForm @switch="step = 'login'" @submit="SubmitPassword" :email="email" :empNo="empNo" :errorMsg="errorMessage" :successMessage="succesMessage" />
+                </v-window-item>
+              </v-window>
             </v-card>
           </v-col>
         </v-row>
@@ -144,26 +61,32 @@ import { useRouter } from 'vue-router'
 import authApi from '@/Api/Auth'
 import { useAuthStore } from '@/stores/auth'
 import { useDisplay } from 'vuetify'
+import LoginForm from '@/pages/auth/LoginForm.vue'
+import RegisterForm from '@/pages/auth/RegisterForm.vue'
+import OtpForm from './auth/OtpForm.vue'
+import PasswordForm from './auth/PasswordForm.vue'
 import logo from '@/assets/logo.png'
 
 const authStore = useAuthStore()
 const { mobile } = useDisplay()
 
-const employeeNo = ref('')
-const password = ref('')
 const router = useRouter()
-const showPassword = ref<boolean>(false)
 const errorMessage = ref('')
+const email = ref('')
+const empNo = ref('')
+const succesMessage = ref('')
+const step = ref('login') // 'login' or 'register'
 
-const singIn = async () => {
+const onSignIn = async (credentials: { employeeNo: string; password: string }) => {
   try {
     const result = await authApi.Login({
-      employeeNo: employeeNo.value,
-      password: password.value,
+      employeeNo: credentials.employeeNo,
+      password: credentials.password,
     })
 
     if (!result.data.success) {
       errorMessage.value = result.data.message
+      return
     }
     const { accessToken, employee, firstLogin, role } = result.data
     authStore.setAccessToken(accessToken)
@@ -188,6 +111,86 @@ const singIn = async () => {
       'Server error'
     console.log(error)
   }
+}
+
+const onRegister = async (formData: { employeeNo: string; email: string; dob: string }) => {
+  try {
+    // Simulate API call
+    // await authApi.Register(formData)
+    console.log('Registration data:', formData)
+    const response = await authApi.RequestOTP(formData.employeeNo, formData.email)
+    if (response.data.success) {
+      step.value = 'otp'
+      email.value = formData.email
+      empNo.value = formData.employeeNo
+    } else {
+      errorMessage.value = response.data.message || 'Failed to request OTP. Please try again.'
+    }
+  } catch (error) {
+    console.error('Registration failed:', error)
+  }
+}
+
+const verifyOTP = async (otpData: { otp: string, email: string, employeeNo: string }) => {
+  try {
+    errorMessage.value = ''
+    const response = await authApi.VerifyOTP(otpData.employeeNo, otpData.email, otpData.otp);
+    if (!response.data.success){
+      errorMessage.value = response.data.message;
+    }
+    errorMessage.value = ''
+    succesMessage.value = response.data.message;
+    setTimeout(() => {
+      succesMessage.value = ''
+      FromOTP('password')
+    }, 800);
+  } catch (error) {
+    console.error(`OTP Verification failed:`, error);
+  }
+}
+
+const ResendOTP = async (empNo: string, email: string) => {
+  try {
+    console.log('resend')
+    errorMessage.value = ''
+    const response = await authApi.ResendOTP(empNo, email);
+    if (!response.data.success) {
+      errorMessage.value = response.data.message
+    }
+    errorMessage.value = ''
+    succesMessage.value = response.data.message;
+    setTimeout(() => {
+      succesMessage.value = ''
+    }, 1500);
+  } catch (error) {
+    console.error(`Resending OTP failed: `, error);
+  }
+}
+
+
+const SubmitPassword = async  (data: {email: string, empNo: string, password: string}) => {
+  console.log('submit')
+  try {
+    errorMessage.value = ''
+    const response = await authApi.PasswordUpdate(data.empNo, data.email.toLowerCase(), data.password);
+    if (!response.data.success) {
+      errorMessage.value = response.data.message
+    }
+    errorMessage.value = ''
+    succesMessage.value = response.data.message
+    setTimeout(() => {
+      step.value = 'login'
+    }, 5000);
+
+
+
+  } catch (error) {
+    console.error(`Error saving password: ${error}`);
+  }
+}
+
+const FromOTP = (v: string ) => {
+  step.value = v
 }
 </script>
 

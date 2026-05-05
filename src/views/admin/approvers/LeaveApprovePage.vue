@@ -117,19 +117,31 @@
                 </v-chip>
               </template>
               <template v-slot:[`item.actions`]="{ item }">
-                <div class="d-flex justify-center align-center w-100">
+                <!-- Single flex container to keep icons inline and centered -->
+                <div class="d-flex justify-center align-center w-100 ga-2">
+
+                  <!-- View Certificate Action -->
+                  <v-tooltip v-if="item.leave_cd === 'SIC' && item.image" text="View Certificate" location="top">
+                    <template v-slot:activator="{ props }">
+                      <v-btn
+                        v-bind="props"
+                        icon="mdi-eye"
+                        color="blue-grey-darken-1"
+                        size="small"
+                        variant="text"
+                        @click="viewCertificate(item)"
+                      />
+                    </template>
+                  </v-tooltip>
+
+                  <!-- Approval Action -->
                   <v-tooltip
-                    :text="
-                      isApproved(item.date_posted) ? 'Already Approved' : 'Select for Approval'
-                    "
+                    v-if="item.apprvd !== '0'"
+                    :text="isApproved(item.date_posted) ? 'Already Approved' : 'Select for Approval'"
                     location="top"
                   >
                     <template v-slot:activator="{ props }">
-                      <div
-                        v-if="item.apprvd !== '0'"
-                        v-bind="props"
-                        class="action-checkbox-wrapper"
-                      >
+                      <div v-bind="props" class="action-checkbox-wrapper">
                         <v-checkbox-btn
                           :model-value="isApproved(item.date_posted) || isSelected(item)"
                           :readonly="isApproved(item.date_posted)"
@@ -142,6 +154,7 @@
                       </div>
                     </template>
                   </v-tooltip>
+
                 </div>
               </template>
             </v-data-table>
@@ -188,12 +201,68 @@
       </div>
     </v-overlay>
   </v-container>
+
+  <v-dialog
+    v-model="isPreviewOpen"
+    fullscreen
+    transition="dialog-bottom-transition"
+    scrim="black"
+  >
+  <v-card class="d-flex flex-column bg-grey-darken-4">
+    <!-- Toolbar -->
+    <v-toolbar color="surface" density="comfortable" elevation="2">
+      <v-btn icon @click="isPreviewOpen = false">
+        <v-icon>mdi-close</v-icon>
+      </v-btn>
+      <v-toolbar-title class="text-subtitle-1 font-weight-bold">
+        Document Preview
+      </v-toolbar-title>
+      <v-spacer></v-spacer>
+      <!-- Action buttons for the preview -->
+      <v-btn
+        v-if="selectedLeave?.image"
+        icon="mdi-download"
+        variant="text"
+        @click="downloadFile"
+      ></v-btn>
+    </v-toolbar>
+
+    <!-- Content Area -->
+    <v-card-text class="pa-0 flex-grow-1 d-flex flex-column overflow-hidden">
+      <div class="preview-scroll-container">
+        <!-- PDF Rendering -->
+        <template v-if="isPDF(selectedLeave?.image ?? '')">
+          <div class="d-flex justify-center py-4">
+            <vue-pdf-embed
+              :source="selectedLeave?.image ?? ''"
+              :width="fullScreenWidth"
+              class="elevation-10"
+            />
+          </div>
+        </template>
+
+        <!-- Image Rendering -->
+        <template v-else>
+          <div class="d-flex align-center justify-center fill-height pa-4">
+            <v-img
+              :src="selectedLeave?.image ?? ''"
+              class="rounded-lg elevation-10"
+              max-width="100%"
+              contain
+            ></v-img>
+          </div>
+        </template>
+      </div>
+    </v-card-text>
+  </v-card>
+</v-dialog>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import { useAuthStore } from '@/stores/auth'
+import VuePdfEmbed from 'vue-pdf-embed'
 import Api from '@/Api/Admin'
 
 // Initialize display helpers for mobile responsiveness
@@ -221,6 +290,7 @@ interface LeaveApplication {
   phalf: string | null
   with_pay: string
   reason: string
+  image: string | null
 }
 
 // --- State ---
@@ -230,11 +300,13 @@ const selectedEmployee = ref<Employee | null>(null)
 const leaveData = ref<LeaveApplication[]>([])
 const employees = ref<Employee[]>([])
 const selectedLeaves = ref<LeaveApplication[]>([])
+const selectedLeave = ref<LeaveApplication | null>(null)
 const snackbar = ref(false)
 const snackbarMessage = ref('')
 const snackbarColor = ref('success')
 const isProcessing = ref(false)
 const isLoading = ref(false)
+const isPreviewOpen = ref(false)
 
 // --- Headers ---
 const employeeHeaders = [
@@ -269,10 +341,40 @@ const getStatusColor = (datePosted: string | null) => {
   return isApproved(datePosted) ? 'success' : 'warning'
 }
 
+const { width, name} = useDisplay()
+const isFullscreen = ref(false)
+
+const isMobile = computed(() => ['xs', 'sm'].includes(name.value))
+
+const pdfWidth = computed(() => {
+  if (isMobile.value) {
+    // Take the screen width and subtract the card/dialog margins (usually ~32px)
+    // plus the internal padding we added (~32px).
+    // Total 64px-80px is a safe buffer.
+    return width.value - 80;
+  }
+  return 450;
+})
+
+
+const downloadFile = () => {
+  if (!selectedLeave.value?.image) return
+  const link = document.createElement('a')
+  link.href = selectedLeave.value.image
+  link.download = `leave-attachment-${selectedLeave.value.emp_no}`
+  link.click()
+}
+
+const isPDF = (url: string) => {
+  return url.toLowerCase().endsWith('.pdf');
+};
+
 // const doneApproved = (approve: string) => {
 //   if (approve === '1' || approve === 'Y') return 'success'
 //   return 'warning'
 // }
+
+
 
 const selectEmployee = async (employee: Employee) => {
   try {
@@ -314,6 +416,18 @@ const selectEmployee = async (employee: Employee) => {
     isLoading.value = false
   }
 }
+
+
+const viewCertificate = (item: LeaveApplication) => {
+  selectedLeave.value = item;
+  isPreviewOpen.value = true;
+}
+
+const fullScreenWidth = computed(() => {
+  // Subtract padding for the PDF inside the fullscreen view
+  const margin = isMobile.value ? 20 : 100
+  return width.value - margin
+})
 
 const loadEmployees = async () => {
   try {
@@ -518,5 +632,52 @@ watch(
 /* Optional: subtle background for the checkbox cell on hover */
 :deep(tr:hover) .action-checkbox-wrapper {
   opacity: 1;
+}
+.preview-scroll-container {
+  height: calc(100vh - 64px); /* Subtract toolbar height */
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: #2c2c2c;
+}
+
+.attachment-preview-container {
+  position: relative;
+  cursor: pointer;
+  background: #f5f5f5;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.preview-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.attachment-preview-container:hover .preview-overlay {
+  opacity: 1;
+}
+
+.pdf-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Ensure PDF fits width on mobile */
+:deep(.vue-pdf-embed > div) {
+  margin-bottom: 8px !important;
 }
 </style>

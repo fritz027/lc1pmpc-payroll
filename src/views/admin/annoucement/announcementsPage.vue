@@ -26,11 +26,11 @@
       <!-- Announcement List -->
       <v-card class="rounded-2xl pa-4 elevation-2">
         <v-data-table :headers="headers" :items="filtered" class="elevation-0 rounded-2xl">
-          <template #item.preview="{ item }">
+          <template v-slot:[`item.preview`]="{ item }">
             <v-img :src="item.preview" height="50" width="50" class="rounded-lg" cover />
           </template>
 
-          <template #item.status="{ item }">
+          <template v-slot:[`item.status`]="{ item }">
             <v-chip
               :color="item.status === 'O' ? 'green' : 'red'"
               class="text-white rounded-lg"
@@ -40,11 +40,11 @@
             </v-chip>
           </template>
 
-          <template #item.dateCreated="{ item }">
+          <template v-slot:[`item.dateCreated`]="{ item }">
             <div>{{ formatDate(item.dateCreated, 'DD-MM-YYYY') }}</div>
           </template>
 
-          <template #item.actions="{ item }">
+          <template v-slot:[`item.actions`]="{ item }">
             <v-row justify="center" align="center" class="ma-0" dense>
               <v-btn icon="mdi-pencil" size="small" variant="text" @click="onEdit(item)" />
               <v-btn
@@ -177,11 +177,14 @@ const confirmDelete = async () => {
       successDelete.value = false
       deleteMessage.value = response.data.message || 'Failed to delete announcement.'
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+
     showDialog.value = false
     showDialogSuccess.value = true
     successDelete.value = false
-    deleteMessage.value = error.response?.data?.message || 'Unexpected error occurred.'
+    deleteMessage.value =
+      (error as { response?: { data?: { message?: string } } }).response?.data?.message ||
+      'Unexpected error occurred.'
     console.error('Delete error:', error)
   }
 }

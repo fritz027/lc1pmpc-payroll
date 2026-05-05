@@ -132,51 +132,31 @@
         </template>
 
         <template v-slot:[`item.actions`]="{ item }">
-          <div class="d-flex gap-1 align-center">
-            <template v-if="!isApproved(item.apprvd)">
-              <v-tooltip text="View Record" location="top">
-                <template v-slot:activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    icon="mdi-eye"
-                    variant="text"
-                    color="blue-grey-darken-1"
-                    size="small"
-                    @click="viewLeave(item)"
-                  ></v-btn>
-                </template>
-              </v-tooltip>
+        <div class="d-flex gap-1 align-center">
+          <!-- View (Always visible) -->
+          <v-btn icon="mdi-eye" color="blue-grey-darken-1" size="small" variant="text" @click="viewLeave(item)" />
 
-              <v-tooltip text="Delete Leave" location="top">
-                <template v-slot:activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    icon="mdi-delete"
-                    variant="text"
-                    color="error"
-                    size="small"
-                    @click="deleteLeave(item)"
-                  ></v-btn>
-                </template>
-              </v-tooltip>
-            </template>
+          <!-- Upload (SIC only, Pending only) -->
+          <!-- <v-btn
+            v-if="item.leave_cd === 'SIC' && !isApproved(item.apprvd)"
+            icon="mdi-file-upload"
+            color="success"
+            size="small"
+            variant="text"
+            @click="openModal(item)"
+          /> -->
 
-            <template v-else>
-              <v-tooltip text="View Record" location="top">
-                <template v-slot:activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    icon="mdi-eye"
-                    variant="text"
-                    color="blue-grey-darken-1"
-                    size="small"
-                    @click="viewLeave(item)"
-                  ></v-btn>
-                </template>
-              </v-tooltip>
-            </template>
-          </div>
-        </template>
+          <!-- Delete (Pending only) -->
+          <v-btn
+            v-if="!isApproved(item.apprvd)"
+            icon="mdi-delete"
+            color="error"
+            size="small"
+            variant="text"
+            @click="deleteLeave(item)"
+          />
+        </div>
+      </template>
       </v-data-table>
     </v-card>
 
@@ -196,6 +176,7 @@
       </template>
     </v-snackbar>
   </v-container>
+
 </template>
 
 <script setup lang="ts">
@@ -233,15 +214,9 @@ interface LeaveApplication {
   with_pay: string
   reason: string
   apprvd: string
+  image: string | null
 }
 
-interface NewLeaveData {
-  leaveDate: string;
-  kindOfLeave: string;
-  withPay: boolean;
-  hours: number;
-  reason: string;
-}
 
 const currentYear = new Date().getFullYear().toString()
 const authStore = useAuthStore()
@@ -252,6 +227,68 @@ const isView = ref(false)
 const selectedYear = ref(currentYear)
 const employeeLeaveBalances = ref<EmployeeLeaveBalance | null>(null)
 const leaveRecords = ref<LeaveApplication[]>([])
+
+
+// const uploadDialog = ref(false)
+// const isUploading = ref(false)
+// const fileType = ref('jpg')
+// const selectedFile = ref<LeaveApplication | null>(null)
+// const currentExtension = ref('jpg')
+// const newFile = ref<File | null>(null);
+
+
+
+
+// const openModal = (item: LeaveApplication | null) => {
+//   selectedFile.value = item
+//   currentExtension.value = 'jpg'
+//   newFile.value = null
+//   uploadDialog.value = true
+// }
+
+
+// const handleUpload = async () => {
+//   if (!newFile.value) return;
+
+//   const fileName = newFile.value.name || '';
+//   const ext = fileName.split('.').pop()?.toLowerCase() || 'jpg';
+//   currentExtension.value = ext;
+
+//   const formData = new FormData();
+
+//   const date = formatDateMMDDYYYY(selectedFile.value?.leave_dt ?? '');
+
+//   formData.append('file', newFile.value);
+//   formData.append('date', date)
+
+//   try {
+//     isUploading.value = true;
+
+//     const response = await leaveApi.UploadLeave(authStore.accessToken, formData)
+
+//     if (!response.data.success) {
+//       errorMessage.value = response.data.message
+//     }
+
+//     // getUrl()
+
+//     alert("Upload Successfully!");
+
+//   } catch (error) {
+//    console.error('Upload failed', error);
+//     alert('Failed to upload file.');
+//   } finally {
+//     isUploading.value = false;
+//   }
+
+// }
+
+
+// const formatDateMMDDYYYY = (dateStr: string) => {
+//   if (!dateStr) return '';
+//   const [year, month, day] = dateStr.split('-');
+//   return `${month}${day}${year}`;
+// }
 
 const availableYears = computed(() => {
   const years = []
@@ -275,7 +312,6 @@ const loadEmployeeCredits = async (year: string) => {
 const loadEmployeeLeaveList = async (year: string) => {
   try {
     const result = await leaveApi.getEmployeeLeaveList(authStore.accessToken, Number(year))
-    console.log(result.data)
     leaveRecords.value = result.data.data
   } catch (error) {
     console.error('Failed to load leave list:', error)
@@ -314,10 +350,10 @@ const formatDate = (dateString: string) => {
   })
 }
 
-const onLeaveSaved = async (newLeaveData: NewLeaveData) => {
+const onLeaveSaved = async (newLeaveData: FormData) => {
   // 1. Prepare Key Identifiers for Comparison
   // We use strings for consistency since database values often return as strings
-  const newDate = newLeaveData.leaveDate // Format: 'YYYY-MM-DD'
+  const newDate = newLeaveData.get('leaveDate') // Format: 'YYYY-MM-DD'
 
   // 2. Duplicate Check Logic
   // Only run this if we are creating a NEW record (not editing an existing one)
@@ -336,18 +372,10 @@ const onLeaveSaved = async (newLeaveData: NewLeaveData) => {
     }
   }
 
-  // 3. Proceed to Save
-  const payload = {
-    for_year: selectedYear.value,
-    leave_cd: newLeaveData.kindOfLeave,
-    leave_dt: newLeaveData.leaveDate,
-    no_hrs: newLeaveData.hours,
-    with_pay: newLeaveData.withPay ? '1' : '0', // Consistent with your Sybase logic
-    reason: newLeaveData.reason,
-  }
 
   try {
-    const response = await leaveApi.upsertLeave(authStore.accessToken, payload)
+    newLeaveData.append('for_year', String(selectedYear.value))
+    const response = await leaveApi.upsertLeave(authStore.accessToken, newLeaveData)
     if (response.data.success) {
       // Refresh both the list and the credits summary
       await Promise.all([
@@ -375,12 +403,12 @@ const isApproved = (apprvd: string | null) => {
 }
 
 const getStatusColor = (apprvd: string | null | number) => {
-  console.log(apprvd)
+
   return apprvd === '1' || apprvd === 'Y' || apprvd === 1 ? 'success' : 'warning'
 }
 
 const openDialog = (item: LeaveApplication | null = null) => {
-  console.log('Opening dialog with item:', item)
+
   selectedItem.value = item
   dialog.value = true
 }
@@ -411,7 +439,7 @@ const deleteLeave = async (item: LeaveApplication) => {
       }
       const response = await leaveApi.deleteLeave(authStore.accessToken, payload)
       if (response.data.success) {
-        console.log('Leave deleted successfully')
+
         leaveRecords.value = leaveRecords.value.filter((r) => r !== item)
       } else {
         console.error('Failed to delete leave:', response.data.message)
@@ -435,6 +463,10 @@ const handleBackNavigation = () => {
     selectedItem.value = null
   }
 }
+
+// const viewUpload = (item: LeaveApplication | null) => {
+
+// }
 
 watch(dialog, (newVal) => {
   if (newVal) {

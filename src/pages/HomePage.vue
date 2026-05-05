@@ -501,7 +501,7 @@ const MENU_CONFIG = [
         icon: 'mdi-clipboard-text-clock',
         route: '/schedule',
         badgeKey: undefined,
-        roles: ['manager', 'admin', 'superadmin', 'hr'],
+        roles: ['user', 'approver', 'admin', 'superadmin', 'hr'],
       },
       { title: 'Code Of Conduct', icon: 'mdi-file-document-multiple', route: '/code-of-conduct', badgeKey: undefined, roles: undefined },
     ],

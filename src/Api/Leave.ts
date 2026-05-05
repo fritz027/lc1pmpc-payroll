@@ -1,5 +1,15 @@
 import Api from '@/services/Api'
 
+interface DeletePayload {
+  for_year: string,
+  leave_cd: string
+  leave_dt: string,
+  no_hrs: number,
+  with_pay: string,
+  reason: string,
+  apply_on: string,
+}
+
 const endPoint = `/pmdeux/employee/leave`
 
 export default {
@@ -31,14 +41,14 @@ export default {
       },
     })
   },
-  upsertLeave(token: string, payload: any) {
+  upsertLeave(token: string, payload: FormData | object) {
     return Api.post(`${endPoint}/upsert`, payload, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     })
   },
-  deleteLeave(token: string, payload: any) {
+  deleteLeave(token: string, payload: DeletePayload) {
     return Api.delete(`${endPoint}/delete`, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -46,4 +56,11 @@ export default {
       data: payload,
     })
   },
+  UploadLeave(token: string, payload: FormData | object) {
+    return Api.post(`${endPoint}/upload/leave`, payload, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      }
+    });
+  }
 }

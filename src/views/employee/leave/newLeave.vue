@@ -140,6 +140,59 @@
               ></v-textarea>
             </v-col>
 
+            <v-fade-transition>
+              <v-col cols="12" v-if="formData.kindOfLeave === 'SIC' && !isView">
+                <v-file-input
+                  v-model="formData.attachment"
+                  label="Medical Certificate / Supporting Document"
+                  variant="outlined"
+                  density="comfortable"
+                  prepend-inner-icon="mdi-paperclip"
+                  accept="image/*,application/pdf"
+                  placeholder="Upload your medical certificate"
+                  :rules="[(v: any) => !v || v.size < 2000000 || 'File size should be less than 2 MB!']"
+                  :readonly="isView"
+                  show-size
+                >
+                  <template v-slot:selection="{ fileNames }">
+                    <template v-for="fileName in fileNames" :key="fileName">
+                      <v-chip size="small" label color="primary" class="me-2">
+                        {{ fileName }}
+                      </v-chip>
+                    </template>
+                  </template>
+                </v-file-input>
+              </v-col>
+              <v-col cols="12" class="pa-0 pa-sm-3" v-if="isView && formData.kindOfLeave === 'SIC'">
+                <div class="text-subtitle-1 mb-2 font-weight-bold px-4">Attachments:</div>
+
+                  <div class="pdf-outer-wrapper mx-4 border rounded-lg">
+                    <div v-if="isPDF(formData.image ?? '')" class="pdf-viewport-compact">
+                      <vue-pdf-embed
+                        :source="formData.image ?? ''"
+                        :width="pdfWidth"
+                        class="pdf-canvas-fix"
+                      />
+                      <!-- This overlay captures clicks and prevents accidental scrolling/zooming -->
+                      <div class="mobile-shield" @click="isFullscreen = true">
+                        <v-chip color="white" class="ma-2" prepend-icon="mdi-fullscreen">
+                          Tap to Expand
+                        </v-chip>
+                      </div>
+                    </div>
+
+                    <v-img
+                      v-else
+                      :src="formData.image"
+                      max-height="400"
+                      width="100%"
+                      contain
+                      class="bg-grey-lighten-2"
+                    />
+                  </div>
+              </v-col>
+            </v-fade-transition>
+
             <v-col cols="12" sm="6">
               <v-text-field
                 v-model.number="formData.hours"
@@ -167,16 +220,7 @@
         </v-form>
       </div>
 
-      <!-- <div class="px-6 pb-2 d-flex flex-wrap gap-4 text-caption text-medium-emphasis">
-        <div class="d-flex align-center">
-          <v-icon size="small" class="mr-1">mdi-clock-edit-outline</v-icon>
-          Encode Date: <strong>{{ systemInfo.encodeDate }}</strong>
-        </div>
-        <div class="d-flex align-center text-primary">
-          <v-icon size="small" class="mr-1">mdi-calendar-alert</v-icon>
-          Payroll CutOff: <strong>{{ systemInfo.payrollCutoff }}</strong>
-        </div>
-      </div> -->
+
     </v-card-text>
 
     <v-divider></v-divider>
@@ -206,6 +250,8 @@ import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import leaveApi from '@/Api/Leave'
 import attendanceApi from '@/Api/Attendance'
+import VuePdfEmbed from 'vue-pdf-embed'
+import { useDisplay } from 'vuetify'
 
 // Basic interface for the new form
 interface NewLeaveForm {
@@ -214,6 +260,9 @@ interface NewLeaveForm {
   reason: string
   hours: number | null
   withPay: boolean
+  attachment: File | null
+  image: string | null
+
 }
 interface leaveType {
   value: string
@@ -231,6 +280,7 @@ interface LeaveData {
   reason: string
   no_hrs: number
   with_pay: string
+  image: string | null
 }
 
 const props = defineProps<{
@@ -262,7 +312,33 @@ const formData = reactive<NewLeaveForm>({
   reason: '',
   hours: 0, // Sensible default for a standard day
   withPay: true,
+  attachment: null,
+  image: null
 })
+
+const { width, name} = useDisplay()
+const isFullscreen = ref(false)
+
+const isMobile = computed(() => ['xs', 'sm'].includes(name.value))
+
+const pdfWidth = computed(() => {
+  if (isMobile.value) {
+    // Take the screen width and subtract the card/dialog margins (usually ~32px)
+    // plus the internal padding we added (~32px).
+    // Total 64px-80px is a safe buffer.
+    return width.value - 80;
+  }
+  return 450;
+})
+
+// const fullScreenWidth = computed(() => {
+//   if (isMobile.value) return width.value
+//   return width.value > 1200 ? 1100 : width.value - 40
+// })
+
+const isPDF = (url: string) => {
+  return url.toLowerCase().endsWith('.pdf');
+};
 
 // Options for the dropdown
 
@@ -285,6 +361,7 @@ onMounted(async () => {
       formData.reason = props.editData.reason
       formData.hours = props.editData.no_hrs
       formData.withPay = props.editData.with_pay === '1'
+      formData.image = props.editData.image
       await setCredit(formData.kindOfLeave ?? '')
     }
   } catch (error) {
@@ -438,7 +515,35 @@ const handleSave = async () => {
   }
   if (valid) {
     errorMessage.value = ''
-    emit('saved', formData)
+    const finalPayload = new FormData()
+    finalPayload.append('kindOfLeave', formData.kindOfLeave || '')
+    finalPayload.append('leaveDate', formData.leaveDate || '')
+    finalPayload.append('reason', formData.reason || '')
+    finalPayload.append('hours', String(formData.hours))
+    finalPayload.append('withPay', formData.withPay ? '1' : '0')
+
+    if (formData.attachment) {
+      const file = formData.attachment
+      const fileExtension = file.name.split('.').pop()
+
+      // 1. Get the components from the YYYY-MM-DD string
+      // formData.leaveDate example: "2026-05-20"
+      const [year, month, day] = formData.leaveDate.split('-')
+
+      // 2. Format the date as mmddyyyy
+      const formattedDate = `${month}${day}${year}`
+
+      // 3. Combine with Employee Number (from your employeeContext)
+      // Result example: "EMP001-05202026.pdf"
+      const newFileName = `${employeeContext.empNo}-${formattedDate}.${fileExtension}`
+
+      // 4. Create the renamed File object
+      const renamedFile = new File([file], newFileName, { type: file.type })
+
+      // 5. Append to Payload (using the key 'attachment' to match your router)
+      finalPayload.append('attachment', renamedFile)
+    }
+    emit('saved', finalPayload)
   }
 }
 
@@ -511,5 +616,69 @@ watch(
 /* Minor utility gap class if you aren't using Tailwind or Vuetify's d-flex utilities extensively */
 .gap-4 {
   gap: 16px;
+}
+.attachment-preview-container {
+  overflow: hidden;
+  position: relative;
+  background-color: #f5f5f5;
+  display: flex;
+  justify-content: center;
+}
+.pdf-outer-wrapper {
+  overflow: hidden; /* This stops the horizontal bleeding */
+  position: relative;
+  background-color: #525659;
+}
+/* Compact view (the one in the form) */
+.pdf-viewport-compact {
+  width: 100%;
+  max-height: 250px; /* Shortened for better mobile UX */
+  overflow-y: auto;
+  overflow-x: hidden; /* Absolutely no side-scrolling */
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+/* Fullscreen view */
+.pdf-viewport-full {
+  height: calc(100vh - 48px);
+  overflow-y: auto;
+  background-color: #1a1a1a;
+}
+
+.pdf-render {
+  display: block;
+  margin: 0 auto;
+}
+
+:deep(.pdf-canvas-fix canvas) {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block;
+}
+
+.mobile-shield {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  background: rgba(0, 0, 0, 0.05); /* Subtle tint */
+}
+
+/* Show a button only on hover or focus to let users know they can expand */
+.fullscreen-hint-btn {
+  opacity: 0.8;
+}
+
+.pdf-relative-container {
+  position: relative;
+  width: 100%;
 }
 </style>

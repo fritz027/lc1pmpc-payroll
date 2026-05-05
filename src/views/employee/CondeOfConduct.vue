@@ -44,7 +44,7 @@
   </v-container>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useDisplay } from 'vuetify'
 import VuePdfEmbed from 'vue-pdf-embed'
@@ -101,8 +101,8 @@ const fullScreenWidth = computed(() => {
   width: 100%;
 }
 
-/* This shield now sits on top of the PDF but allows 
-   the container underneath to scroll 
+/* This shield now sits on top of the PDF but allows
+   the container underneath to scroll
 */
 .scrollable-shield {
   position: absolute;
@@ -112,7 +112,7 @@ const fullScreenWidth = computed(() => {
   height: 100%;
   z-index: 5;
   background: rgba(0, 0, 0, 0);
-  /* This is the magic: it blocks right-clicks/long-press 
+  /* This is the magic: it blocks right-clicks/long-press
      but lets the scroll gesture pass through to the parent */
   pointer-events: auto;
 }
