@@ -266,6 +266,8 @@ import { ref, onMounted, computed } from 'vue'
 import { useDisplay } from 'vuetify'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { usePendingCountStore } from '@/stores/pendingCounts'
+import { storeToRefs } from 'pinia'
 import emloyeeApi from '@/Api/Employee'
 import type { VForm } from 'vuetify/components/VForm'
 import type { PayrollInit } from '@/types/auth'
@@ -280,6 +282,8 @@ import male from '@/assets/male.png'
 const { mobile } = useDisplay()
 const router = useRouter()
 const authStore = useAuthStore()
+const pendingCountStore = usePendingCountStore()
+const { pendingCounts } = storeToRefs(pendingCountStore)
 
 const drawer = ref(true)
 const rail = ref(false)
@@ -289,14 +293,6 @@ const openGroups = ref(['Employee Menu'])
 const snackbar = ref(false)
 const snackbarMessage = ref('')
 const snackbarColor = ref('success')
-
-const pendingCounts = ref({
-  leaves: 0,        // Example: hardcoded for now, but you'll fetch this from an API
-  overtime: 0,
-  attendance: 0,
-  travel: 0,
-  dayOff: 0
-})
 
 
 // ==========================================
@@ -319,7 +315,7 @@ onMounted(() => {
   if (mobile.value) drawer.value = false
 
   if (authStore.getPayrollInit) {
-    getPendingCounts(authStore.getPayrollInit.pay_fr, authStore.getPayrollInit.pay_to)
+    pendingCountStore.fetchPendingCounts(authStore.getPayrollInit.pay_fr, authStore.getPayrollInit.pay_to, authStore.accessToken)
   }
   checkPayrollInit()
 })
@@ -346,9 +342,9 @@ const visibleGroups = computed(() => {
 
     // 2. Check item-level access (This makes the 'Change Day-off' restriction work)
     const filteredItems = group.items.filter((item) => {
-      if (item.title === 'Change Day-off' && withCDO.value !== 'Y') {
-        return false
-      }
+      // if (item.title === 'Change Day-off' && withCDO.value !== 'Y') {
+      //   return false
+      // }
 
       if (!item.roles) return true // Public to everyone in the group
       return item.roles.includes(currentUserRole) // Restricted
@@ -409,7 +405,7 @@ const confirmPayrollSelection = async () => {
   snackbarMessage.value = `Payroll period ${selectedPayroll.value?.init_cd_full ?? ''} selected.`
   snackbarColor.value = 'success'
   snackbar.value = true
-  await getPendingCounts(selectedPayroll.value.pay_fr, selectedPayroll.value.pay_to)
+  pendingCountStore.fetchPendingCounts(selectedPayroll.value.pay_fr, selectedPayroll.value.pay_to, authStore.accessToken)
 }
 
 // ==========================================
@@ -543,40 +539,6 @@ const MENU_CONFIG = [
 // ==========================================
 // 7. PENDING APPROVALS BADGE LOGIC (Example implementation, you would replace this with real API calls)
 // ==========================================
-
-const formatDateOnly = (dateString: string | Date) => {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
-}
-
-const getPendingCounts = async (dateFrom: string, dateTo: string) => {
-  // Simulate API call delay
-  try {
-    const response = await emloyeeApi.FetchPendingApprovalCount(
-      authStore.accessToken,
-      formatDateOnly(dateFrom) ?? '',
-      formatDateOnly(dateTo) ?? ''
-    )
-    if (!response.data.success) {
-      console.error('Failed to fetch pending counts:', response.data.message)
-      return
-    }
-
-    const data = response.data.pendingApprovals
-    pendingCounts.value = {
-      leaves: data.leave ?? 0,
-      overtime: data.ot ?? 0,
-      attendance: data.attendance ?? 0,
-      travel: data.travel ?? 0,
-      dayOff: data.changeOff ?? 0,
-    }
-
-    console.log('Pending counts updated:', pendingCounts.value, response.data)
-  } catch (error: unknown) {
-    console.error('Error fetching pending counts:', error)
-  }
-}
 
 
 </script>

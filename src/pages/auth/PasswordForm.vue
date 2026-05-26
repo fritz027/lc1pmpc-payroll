@@ -5,9 +5,15 @@
     <v-fade-transition hide-on-leave>
       <div v-if="successMessage" class="text-center py-8">
         <v-icon color="success" size="80" icon="mdi-check-circle-outline" class="mb-4" />
-        <h3 class="text-h5 font-weight-bold mb-2">Verification Successful!</h3>
+        <h3 class="text-h5 font-weight-bold mb-2">
+          {{ flowSource === 'forgot' ? 'Password Reset!' : 'Registration Complete!' }}
+        </h3>
         <p class="text-body-1 text-medium-emphasis mb-6">
-          Your account has been fully verified and your new password is set.
+          {{
+            flowSource === 'forgot'
+              ? 'Your password has been successfully reset. You can now log in.'
+              : 'Your account has been verified and your password is set.'
+          }}
         </p>
         <v-btn color="primary" block rounded="pill" size="large" @click="handleLogin('login')">
           Go to Login
@@ -74,7 +80,7 @@
             variant="flat"
             class="mt-6 rounded-pill"
           >
-            Complete Registration
+            {{ flowSource === 'forgot' ? 'Reset Password' : 'Complete Registration' }}
           </v-btn>
         </v-form>
       </div>
@@ -90,6 +96,7 @@ interface Props {
   empNo: string;
   errorMsg?: string;
   successMessage?: string;
+  flowSource: 'register' | 'forgot'
 }
 
 interface EmpData {
@@ -156,8 +163,7 @@ const submitPassword = async () => {
   loading.value = true;
   data.password  = password.value
   if (valid) {
-    console.log(data);
-    emit('submit', { ...data});
+    emit('submit', { email: props.email, empNo: props.empNo, password: password.value })
   }
   loading.value = false;
 };

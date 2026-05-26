@@ -215,10 +215,12 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import { useAuthStore } from '@/stores/auth'
+import { usePendingCountStore } from '@/stores/pendingCounts'
 import Api from '@/Api/Admin'
 
 // Initialize display helpers for mobile responsiveness
 const { mobile } = useDisplay()
+const pendingCountStore = usePendingCountStore()
 
 // --- Interfaces ---
 interface Employee {
@@ -287,7 +289,7 @@ const isApproved = (datePosted: string | null) => {
 }
 
 const getStatusColorNew = (isApproved: string | null | number) => {
-  switch (isApproved) {
+  switch (isApproved?.toString().toUpperCase()) {
     case 'APPROVED':
       return 'success'
     case 'REJECTED':
@@ -431,16 +433,18 @@ const approveBulkAttendance = async () => {
     }))
 
     const res = await Api.BulkApproveAttendance(authStore.accessToken, payload)
-
+    console.log(res.data)
     if (res.data.success) {
       snackbarMessage.value = `Successfully approved ${selectedAttendance.value.length} applications.`
       snackbarColor.value = 'success'
       snackbar.value = true
 
-      // Refresh the list for the current employee
-      if (selectedEmployee.value) {
-        await selectEmployee(selectedEmployee.value)
-      }
+      await selectEmployee(selectedEmployee.value!)
+      await pendingCountStore.fetchPendingCounts(
+        authStore.payrollInit?.pay_fr ?? '',
+        authStore.payrollInit?.pay_to ?? '',
+        authStore.accessToken,
+      )
 
       // Clear selection
       selectedAttendance.value = []

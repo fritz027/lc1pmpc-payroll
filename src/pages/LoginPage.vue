@@ -30,21 +30,45 @@
               </v-alert>
 
               <!-- Switch between Login and Register -->
-              <v-window v-model="step">
+              <v-window v-model="step" :touch="false">
                 <v-window-item value="login">
-                  <LoginForm @switch="step = 'register'" @login="onSignIn" />
+                  <LoginForm @switch="step = 'register'" @login="onSignIn" @forgot="step = 'forgot'"  />
                 </v-window-item>
 
                 <v-window-item value="register">
                   <RegisterForm @switch="step = 'login'" @register="onRegister" />
                 </v-window-item>
 
+                <!-- inside your v-window, after the register item -->
+                <v-window-item value="forgot">
+                  <ForgotPasswordForm
+                    @switch="step = 'login'"
+                    @submit="onForgotPassword"
+                  />
+                </v-window-item>
+
                 <v-window-item value="otp">
-                  <OtpForm @switch="FromOTP" @verified="verifyOTP" @resend="ResendOTP" :email="email" :empNo="empNo" :err-msg="errorMessage"/>
+                  <OtpForm
+                    @switch="FromOTP"
+                    @verified="verifyOTP"
+                    @resend="ResendOTP"
+                    :email="email"
+                    :empNo="empNo"
+                    :err-msg="errorMessage"
+                    :flow-source="flowSource"
+                  />
                 </v-window-item>
 
                 <v-window-item value="password">
-                  <PasswordForm @switch="step = 'login'" @submit="SubmitPassword" :email="email" :empNo="empNo" :errorMsg="errorMessage" :successMessage="succesMessage" />
+                  <PasswordForm
+                    @switch="step = 'login'"
+                    @submit="SubmitPassword"
+                    :email="email"
+                    :empNo="empNo"
+                    :errorMsg="errorMessage"
+                    :successMessage="succesMessage"
+                    :flow-source="flowSource"
+                  />
                 </v-window-item>
               </v-window>
             </v-card>
@@ -63,8 +87,9 @@ import { useAuthStore } from '@/stores/auth'
 import { useDisplay } from 'vuetify'
 import LoginForm from '@/pages/auth/LoginForm.vue'
 import RegisterForm from '@/pages/auth/RegisterForm.vue'
-import OtpForm from './auth/OtpForm.vue'
-import PasswordForm from './auth/PasswordForm.vue'
+import OtpForm from '@/pages/auth/OtpForm.vue'
+import PasswordForm from '@/pages/auth/PasswordForm.vue'
+import ForgotPasswordForm from '@/pages/auth/ForgotPasswordForm.vue'
 import logo from '@/assets/logo.png'
 
 const authStore = useAuthStore()
@@ -76,6 +101,7 @@ const email = ref('')
 const empNo = ref('')
 const succesMessage = ref('')
 const step = ref('login') // 'login' or 'register'
+const flowSource = ref<'register' | 'forgot'>('register')
 
 const onSignIn = async (credentials: { employeeNo: string; password: string }) => {
   try {
@@ -121,6 +147,7 @@ const onRegister = async (formData: { employeeNo: string; email: string; dob: st
     const response = await authApi.RequestOTP(formData.employeeNo, formData.email)
     if (response.data.success) {
       step.value = 'otp'
+      flowSource.value = 'register'
       email.value = formData.email
       empNo.value = formData.employeeNo
     } else {
@@ -134,18 +161,23 @@ const onRegister = async (formData: { employeeNo: string; email: string; dob: st
 const verifyOTP = async (otpData: { otp: string, email: string, employeeNo: string }) => {
   try {
     errorMessage.value = ''
-    const response = await authApi.VerifyOTP(otpData.employeeNo, otpData.email, otpData.otp);
-    if (!response.data.success){
-      errorMessage.value = response.data.message;
+    const response = await authApi.VerifyOTP(otpData.employeeNo, otpData.email, otpData.otp)
+
+    if (!response.data.success) {
+      errorMessage.value = response.data.message
+      return
     }
-    errorMessage.value = ''
-    succesMessage.value = response.data.message;
+
+    succesMessage.value = response.data.message
     setTimeout(() => {
       succesMessage.value = ''
       FromOTP('password')
-    }, 800);
-  } catch (error) {
-    console.error(`OTP Verification failed:`, error);
+    }, 800)
+
+  } catch (error: unknown) {
+    const status = (error as { response?: { status?: number; data?: { message?: string } } }).response
+    errorMessage.value = status?.data?.message || 'Something went wrong. Please try again.'
+    console.error('OTP Verification failed:', error)
   }
 }
 
@@ -191,6 +223,28 @@ const SubmitPassword = async  (data: {email: string, empNo: string, password: st
 
 const FromOTP = (v: string ) => {
   step.value = v
+}
+
+const onForgotPassword = async (data: { employeeNo: string; email: string }) => {
+  try {
+    errorMessage.value = ''
+    const response = await authApi.RequestOTP(data.employeeNo, data.email)
+    if (response.data.success) {
+      email.value = data.email
+      empNo.value = data.employeeNo
+      flowSource.value = 'forgot'
+      step.value = 'otp'   // reuses your existing OTP step
+    } else {
+      errorMessage.value = response.data.message || 'Failed to send OTP.'
+    }
+ } catch (error: unknown) {
+    const status = (error as { response?: { status?: number } }).response?.status
+    errorMessage.value =
+      status === 400 || status === 401 || status === 404
+        ? 'We could not find an account matching those details.'
+        : 'Something went wrong. Please try again.'
+    console.error('Forgot password error:', error)
+  }
 }
 </script>
 

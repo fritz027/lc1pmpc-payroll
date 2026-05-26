@@ -33,6 +33,12 @@
 
     <v-btn type="submit" color="primary" block rounded class="mb-4">Sign In</v-btn>
 
+    <div class="text-center mt-3">
+      <a class="text-body-2 text-primary" style="cursor:pointer" @click="$emit('forgot')">
+        Forgot password?
+      </a>
+    </div>
+
     <div class="text-center">
       <span class="text-body-2">New on our platform? </span>
       <v-btn variant="text" color="primary" class="pa-0" @click="$emit('switch')">Register an account</v-btn>
@@ -42,7 +48,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-const emit = defineEmits(['login', 'switch'])
+const emit = defineEmits(['login', 'switch', 'forgot'])
 
 const employeeNo = ref('')
 const password = ref('')

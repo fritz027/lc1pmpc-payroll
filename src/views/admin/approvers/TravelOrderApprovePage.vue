@@ -201,10 +201,12 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import { useAuthStore } from '@/stores/auth'
+import { usePendingCountStore } from '@/stores/pendingCounts'
 import Api from '@/Api/Admin'
 
 // Initialize display helpers for mobile responsiveness
 const { mobile } = useDisplay()
+const pendingCountStore = usePendingCountStore()
 
 // --- Interfaces ---
 interface Employee {
@@ -395,6 +397,12 @@ const approveBulkTravelOrder = async () => {
       if (selectedEmployee.value) {
         await selectEmployee(selectedEmployee.value)
       }
+
+      await pendingCountStore.fetchPendingCounts(
+        authStore.payrollInit?.pay_fr ?? '',
+        authStore.payrollInit?.pay_to ?? '',
+        authStore.accessToken,
+      )
 
       // Clear selection
       selectedto.value = []

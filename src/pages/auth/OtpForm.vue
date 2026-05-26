@@ -1,13 +1,20 @@
 <template>
   <v-card class="mx-auto pa-6 text-center" max-width="450" rounded="lg" elevation="2">
-    <v-icon color="success" size="80" icon="mdi-email-check-outline" class="mb-4" />
+    <v-icon
+      :color="flowSource === 'forgot' ? 'warning' : 'success'"
+      size="80"
+      :icon="flowSource === 'forgot' ? 'mdi-lock-reset' : 'mdi-email-check-outline'"
+      class="mb-4"
+    />
 
-    <h3 class="text-h5 font-weight-bold mb-2">Registration Successful!</h3>
+    <h3 class="text-h5 font-weight-bold mb-2">
+      {{ flowSource === 'forgot' ? 'Password Reset' : 'Registration Successful!' }}
+    </h3>
 
     <p class="text-body-2 text-medium-emphasis mb-6">
       We've sent a verification code to <br>
       <span class="font-weight-bold text-high-emphasis">{{ maskedEmail }}</span>.
-      Please check your inbox for the **OTP**.
+      {{ flowSource === 'forgot' ? 'Enter the OTP to reset your password.' : 'Please check your inbox for the OTP.' }}
     </p>
 
     <!-- Display Error Message -->
@@ -45,9 +52,9 @@
       color="primary"
       block
       rounded="pill"
-      @click="handleNextStep('register')"
+      @click="handleNextStep(flowSource === 'forgot' ? 'forgot' : 'register')"
     >
-      BACK TO REGISTRATION
+      {{ flowSource === 'forgot' ? 'BACK TO LOGIN' : 'BACK TO REGISTRATION' }}
     </v-btn>
   </v-card>
 </template>
@@ -60,6 +67,7 @@ interface Props {
   email: string;
   empNo: string;
   errMsg?: string;
+  flowSource: 'register' | 'forgot';
 }
 
 interface OTPData {
@@ -69,6 +77,7 @@ interface OTPData {
 }
 
 const props = defineProps<Props>();
+
 
 // Define Emits with TypeScript
 const emit = defineEmits<{
@@ -125,13 +134,12 @@ const startTimer = (): void => {
 
 const handleVerify = async (code: string): Promise<void> => {
   loading.value = true;
-  otpData.otp = code
-  emit('verified', {...otpData});
+  emit('verified', { otp: code, email: props.email, employeeNo: props.empNo })
   loading.value = false;
 };
 
 const handleResend = (): void => {
-  emit('resend' , otpData.employeeNo, otpData.email );
+  emit('resend' , props.empNo, props.email );
   otpValue.value  = ''
   startTimer();
 };
